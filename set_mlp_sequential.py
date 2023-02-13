@@ -720,7 +720,7 @@ if __name__ == "__main__":
     # erdos renyi formula for sparsity level
     # 
 
-    epsilon = 10  # set the sparsity level
+    epsilon = 30  # set the sparsity level
     zeta = 0.2 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
     no_training_epochs = args.epochs
     batch_size = 128
