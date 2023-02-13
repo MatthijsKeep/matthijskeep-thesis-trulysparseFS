@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=mcs.default.q
+#SBATCH --error=slurm/slurm-%j.err
+#SBATCH --output=slurm/slurm-%j.out
+#SBATCH --time=1:00:00
+#SBATCH --export=ALL
+#SBATCH --get-user-env
+#module load cuda10.2/toolkit/10.2.89
+
+module load anaconda
+
+echo "anaconda module loaded"
+
+conda config --set auto_activate_base false
+echo "conda config set"
+conda init bash
+echo "conda init bash"
+source ~/.bashrc
+echo "source bashrc"
+eval "$(conda shell.bash hook)"
+conda env list
+echo "conda env list"
+conda activate thesis3
+echo "conda activate thesis3"
+
+echo $(env)
+
+python3 test.py
