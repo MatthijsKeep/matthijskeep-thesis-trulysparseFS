@@ -57,7 +57,6 @@ import sys
 import time
 
 
-
 if not os.path.exists('./models'): os.mkdir('./models')
 if not os.path.exists('./logs'): os.mkdir('./logs')
 logger = None
@@ -110,7 +109,7 @@ def dropout(x, rate):
 def createSparseWeights_II(epsilon,noRows,noCols):
     # generate an Erdos Renyi sparse weights mask
     weights = lil_matrix((noRows, noCols))
-    for i in range(epsilon * (noRows + noCols)):
+    for _ in range(epsilon * (noRows + noCols)):
         weights[np.random.randint(0, noRows), np.random.randint(0, noCols)] = np.float32(np.random.randn()/10)
     print("Create sparse matrix with ", weights.getnnz(), " connections and ",
           (weights.getnnz()/(noRows * noCols))*100, "% density level")
@@ -143,7 +142,10 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
 def array_intersect(a, b):
     # this are for array intersection
     n_rows, n_cols = a.shape
-    dtype = {'names': ['f{}'.format(i) for i in range(n_cols)], 'formats': n_cols * [a.dtype]}
+    dtype = {
+        'names': [f'f{i}' for i in range(n_cols)],
+        'formats': n_cols * [a.dtype],
+    }
     return np.in1d(a.view(dtype), b.view(dtype))  # boolean return
 
 def select_input_neurons(weights, k):
@@ -252,7 +254,7 @@ class SET_MLP:
         self.save_filename = ""
         self.input_layer_connections = []
         self.monitor = None
-        self.importance_pruning = False
+        self.importance_pruning = True
 
         self.training_time = 0
         self.testing_time = 0
@@ -280,7 +282,7 @@ class SET_MLP:
         """
         Execute a forward feed through the network.
         :param x: (array) Batch of input data vectors.
-        :return: (tpl) Node outputs and activations per layer. The numbering of the output is equivalent to the layer numbers.
+        :return: (tuple) Node outputs and activations per layer. The numbering of the output is equivalent to the layer numbers.
         """
         # w(x) + b
         z = {}
@@ -320,6 +322,7 @@ class SET_MLP:
         # Determine partial derivative and delta for the output layer.
         # delta output layer
         delta = self.loss.delta(y_true, a[self.n_layers])
+        # print(delta.shape) # (128,10)
         dw = coo_matrix(self.w[self.n_layers - 1], dtype='float32')
         # compute backpropagation updates
         backpropagation_updates_numpy(a[self.n_layers - 1], delta, dw.row, dw.col, dw.data)
@@ -371,8 +374,11 @@ class SET_MLP:
     def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, learning_rate=1e-3, momentum=0.9,
             weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False):
         """
+        Train the network.
+
         :param x: (array) Containing parameters
         :param y_true: (array) Containing one hot encoded labels.
+
         :return (array) A 2D array of metrics (epochs, 3).
         """
         if x.shape[0] != y_true.shape[0]:
@@ -397,35 +403,14 @@ class SET_MLP:
 
         for i in range(epochs):
             # Shuffle the data
-            # code below is slowing so need to check
             if i == 0 or i == 1 or i == 5 or i == 10 or i % 10 == 0:
                 start_time = time.time()
                 print("In eval loop")
                 # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
-                print(self.get_core_input_connections())
+                print(self.get_core_input_connections().shape)
                 selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
-                # print(set_mlp.w[1])
 
-
-                # Print how many neurons in the input layer have a connection
-                # print(f"The number of neurons in the input layer with a connection is: {np.count_nonzero(set_mlp.w[1].sum(axis=1))}")
-                # Print which neurons have a connection
-
-            #     # print(f" The selected features are {selected_features}")
-            #     selected_features_for_eval = pd.DataFrame(selected_features) # TODO: remove this and instead use the importances to select the features
-            #     # convert to csv
-            #     selected_features_for_eval = selected_features_for_eval.to_csv(header=False, index=False)
-
-            #     selected_features_path = f"features/selected_features_{str(args.data)}_{i}_{str(args.model)}.csv"
-            #     if not os.path.exists(os.path.dirname(selected_features_path)):
-            #         os.makedirs(os.path.dirname(selected_features_path))
-
-            #     with open(selected_features_path, 'w') as f:
-            #         f.write(selected_features_for_eval)
-
-                importances_for_eval = pd.DataFrame(importances)
-                # convert to csv
-                importances_for_eval = importances_for_eval.to_csv(header=False, index=False)
+                importances_for_eval = pd.DataFrame(importances).to_csv(header=False, index=False)
 
                 importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
                 if not os.path.exists(os.path.dirname(importances_path)):
@@ -433,7 +418,6 @@ class SET_MLP:
 
                 with open(importances_path, 'w') as f:
                     f.write(importances_for_eval)
-
 
                 print(f"The choosing and logging  of the {args.K} most important weights took {time.time() - start_time} seconds before the {i} epoch")
 
@@ -485,10 +469,6 @@ class SET_MLP:
                                  f"Maximum accuracy val: {maximum_accuracy}")
                 self.testing_time += (t4 - t3).seconds
 
-            # log the chosen features and importances at epochs 0, 1, 5, 10, and every 10 epochs after that
-
-
-
 
             t5 = datetime.datetime.now()
             if i < epochs - 1:  # do not change connectivity pattern after the last epoch
@@ -526,6 +506,7 @@ class SET_MLP:
                 if (val < largest_negative) or (val > smallest_positive):
                     wdok[ik, jk] = val
                     keep_connections += 1
+
         return wdok.tocsr().getnnz(axis=1)
 
     def weights_evolution_I(self):
@@ -575,17 +556,27 @@ class SET_MLP:
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
             t_ev_1 = datetime.datetime.now()
+            print(i)
+            print(self.w[i].get_shape())
 
-            # Importance Pruning
-            if self.importance_pruning and epoch % 10 == 0 and epoch > 200:
+            # Importance Pruning (on the hidden layer)
+            if self.importance_pruning and epoch % 10 == 0 and epoch > 100:
+                print("Importance Pruning")
+                # print(self.w[i].shape) # (input, nhidden)
                 sum_incoming_weights = np.abs(self.w[i]).sum(axis=0)
-                t = np.percentile(sum_incoming_weights, 20)
+                # print(sum_incoming_weights.shape) # (1, nhidden))
+
+                t = np.percentile(sum_incoming_weights, 20, axis=1)
+                # print(t)
                 sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+                # print(sum_incoming_weights)
                 ids = np.argwhere(sum_incoming_weights == 0)
+                print("ids", ids.shape)
 
                 weights = self.w[i].tolil()
                 pdw = self.pdw[i].tolil()
-                weights[:, ids[:,1]]=0
+                
+                weights[:, ids[:,1]] = 0
                 pdw[:, ids[:,1]] = 0
 
                 self.w[i] = weights.tocsr()
@@ -602,14 +593,15 @@ class SET_MLP:
             rows_pd = pdcoo.row
             cols_pd = pdcoo.col
             # print("Number of non zeros in W and PD matrix before evolution in layer",i,[np.size(valsW), np.size(valsPD)])
+
             values = np.sort(self.w[i].data)
             first_zero_pos = find_first_pos(values, 0)
             last_zero_pos = find_last_pos(values, 0)
 
-            largest_negative = values[int((1-self.zeta) * first_zero_pos)]
+            largest_negative = values[int((1-self.zeta) * first_zero_pos)] 
             smallest_positive = values[int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
 
-            #remove the weights (W) closest to zero and modify PD as well
+            # remove the weights (W) closest to zero and modify PD as well # TODO: change to removing neurons instead of weights
             vals_w_new = vals_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
             rows_w_new = rows_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
             cols_w_new = cols_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
@@ -633,7 +625,7 @@ class SET_MLP:
                     inputLayerConnections=self.input_layer_connections,
                 )
 
-            # add new random connections
+            # add new random connections # TODO: modify to a smart way of adding new connections
             keep_connections = np.size(rows_w_new)
             length_random = vals_w.shape[0] - keep_connections
             if self.weight_init == 'normal':
@@ -679,12 +671,16 @@ class SET_MLP:
 
     def predict(self, x_test, y_test, batch_size=100):
         """
+        Function to predict the output of the network for a given input, and compute the classification accuracy.
+
         :param x_test: (array) Test input
         :param y_test: (array) Correct test output
-        :param batch_size:
-        :return: (flt) Classification accuracy
+        :param batch_size: (int) Batch size (default: 100)
+
+        :return: (float) Classification accuracy
         :return: (array) A 2D array of shape (n_cases, n_classes).
         """
+
         activations = np.zeros((y_test.shape[0], y_test.shape[1]))
         for j in range(x_test.shape[0] // batch_size):
             k = j * batch_size
@@ -720,7 +716,7 @@ if __name__ == "__main__":
     # erdos renyi formula for sparsity level
     # 
 
-    epsilon = 30  # set the sparsity level
+    epsilon = 10  # set the sparsity level
     zeta = 0.2 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
     no_training_epochs = args.epochs
     batch_size = 128
@@ -775,16 +771,16 @@ if __name__ == "__main__":
         # time the choosing of the weigths
         start_time = time.time()
         accuracy, _ = set_mlp.predict(x_test, y_test, batch_size=100)
-        print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
+        # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
         selected_features, importances = select_input_neurons(set_mlp.w[1], args.K)
         # print(set_mlp.w[1])
         print(f"The choosing of the {args.K} most important weights took {time.time() - start_time} seconds")
         
         # Print how many neurons in the input layer have a connection
-        print(f"The number of neurons in the input layer with a connection is: {np.count_nonzero(set_mlp.w[1].sum(axis=1))}")
+        # print(f"The number of neurons in the input layer with a connection is: {np.count_nonzero(set_mlp.w[1].sum(axis=1))}")
         # Print which neurons have a connection
 
-        print(f" The selected features are {selected_features}")
+        # print(f" The selected features are {selected_features}")
         selected_features_for_eval = pd.DataFrame(selected_features)
         # convert to csv
         selected_features_for_eval = selected_features_for_eval.to_csv(header=False, index=False)
@@ -811,8 +807,8 @@ if __name__ == "__main__":
 
         # change x_train to only have the selected features
         # reshape x_train_new and x_test to be 2D
-        print(f"The shape of x_train is: {x_train.shape}")
-        print(f"The shape of x_test is: {x_test.shape}")
+        # print(f"The shape of x_train is: {x_train.shape}")
+        # print(f"The shape of x_test is: {x_test.shape}")
 
         # change x_train and x_test to only have the selected features
         x_train_new = np.squeeze(x_train[:, selected_features])
@@ -822,12 +818,12 @@ if __name__ == "__main__":
         y_test = np.argmax(y_test, axis=1)
 
         # print all shapes
-        print(f"The shape of x_train is: {x_train.shape}")
-        print(f"The shape of x_train_new is: {x_train_new.shape}")
-        print(f"The shape of x_test is: {x_test.shape}")
-        print(f"The shape of x_test_new is: {x_test_new.shape}")
-        print(f"The shape of y_train is: {y_train.shape}")
-        print(f"The shape of y_test is: {y_test.shape}")
+        # print(f"The shape of x_train is: {x_train.shape}")
+        # print(f"The shape of x_train_new is: {x_train_new.shape}")
+        # print(f"The shape of x_test is: {x_test.shape}")
+        # print(f"The shape of x_test_new is: {x_test_new.shape}")
+        # print(f"The shape of y_train is: {y_train.shape}")
+        # print(f"The shape of y_test is: {y_test.shape}")
 
         # time the tesitng
         start_time = time.time()

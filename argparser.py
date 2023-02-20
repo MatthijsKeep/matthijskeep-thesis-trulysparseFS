@@ -10,7 +10,7 @@ def get_parser():
                         help='input batch size for training (default: 100)')
     parser.add_argument('--test-batch-size', type=int, default=128, metavar='N',
                         help='input batch size for testing (default: 100)')
-    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.1)')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='SGD momentum (default: 0.9)')
@@ -47,4 +47,5 @@ def get_parser():
     parser.add_argument('--feature_search_exp', type=bool, default=False, help='If the code is running for the feature search experiment, set this to True. This will run the testing for different values of K.')
     parser.add_argument('--plot_features', type=bool, default=False, help='If true. This will plot the features for different values of K.')
     parser.add_argument('--plot_importances', type=bool, default=False, help='If true. This will plot the neuron importances for different values of K.')
+    
     return parser
