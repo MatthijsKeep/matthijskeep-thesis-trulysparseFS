@@ -417,7 +417,7 @@ class SET_MLP:
                 print(self.get_core_input_connections().shape)
                 print(set_mlp.w[1].copy().shape)
                 print(np.abs(set_mlp.w[1].copy()).sum(axis=1).shape) 
-                selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
+                # selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
                 # print(importances)
 
                 importances_for_eval = pd.DataFrame(np.abs(set_mlp.w[1].copy()).sum(axis=1)).to_csv(header=False, index=False)
@@ -604,6 +604,8 @@ class SET_MLP:
             # Input neuron pruning (on the input layer)
             if self.input_pruning and epoch % 10 == 0 and epoch > 100 and i == 1:
                 print("Input neuron pruning")
+                # time 
+                start_input_pruning = datetime.datetime.now()
                 # print(f"The shape of the layer is {self.w[i].shape}") # (input, nhidden)
                 sum_incoming_weights = np.abs(self.w[i].copy()).sum(axis=1)
                 print(sum_incoming_weights.shape) # (input, 1))
@@ -625,6 +627,7 @@ class SET_MLP:
                 # save into the pruning directory
                 plt.savefig(f"pruning/{epoch}.png")
                 plt.close()
+                print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
 
                 # print(matrix2828.shape)
                 # print(matrix2828)
@@ -865,13 +868,6 @@ if __name__ == "__main__":
 
         with open(importances_path, 'w') as f:
             f.write(importances_for_eval)
-        # take the selected features from the first column of the importances
-        selected_features = importances[:, 0].astype(int)
-
-        # change x_train to only have the selected features
-        # reshape x_train_new and x_test to be 2D
-        # print(f"The shape of x_train is: {x_train.shape}")
-        # print(f"The shape of x_test is: {x_test.shape}")
 
         # change x_train and x_test to only have the selected features
         x_train_new = np.squeeze(x_train[:, selected_features])
@@ -881,16 +877,17 @@ if __name__ == "__main__":
         y_test = np.argmax(y_test, axis=1)
 
         # print all shapes
-        # print(f"The shape of x_train is: {x_train.shape}")
-        # print(f"The shape of x_train_new is: {x_train_new.shape}")
-        # print(f"The shape of x_test is: {x_test.shape}")
-        # print(f"The shape of x_test_new is: {x_test_new.shape}")
+        print(f"The shape of x_train is: {x_train.shape}")
+        print(f"The shape of x_train_new is: {x_train_new.shape}")
+        print(f"The shape of x_test is: {x_test.shape}")
+        print(f"The shape of x_test_new is: {x_test_new.shape}")
         # print(f"The shape of y_train is: {y_train.shape}")
         # print(f"The shape of y_test is: {y_test.shape}")
 
         # time the tesitng
         start_time = time.time()
         accuracy_topk = svm_test(x_train_new, y_train, x_test_new, y_test)
+        print("Not stuck here - 0")
         print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
         print(f"The testing of the {args.K} most important weights took {time.time() - start_time} seconds")
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)

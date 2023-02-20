@@ -34,7 +34,7 @@ def plot_importances(data='MNIST', k=50):
         ei_mlp = pd.read_csv('importances/importances_mnist_0_MLP.csv', header=None).values.reshape(28,28)   
         e100_mlp = pd.read_csv('importances/importances_mnist_100_MLP.csv', header=None).values.reshape(28,28)
         e250_mlp = pd.read_csv('importances/importances_mnist_250_MLP.csv', header=None).values.reshape(28,28)
-        e500_mlp = pd.read_csv('importances/importances_mnist_490_MLP.csv', header=None).values.reshape(28,28)
+        e500_mlp = pd.read_csv('importances/importances_mnist_500_MLP.csv', header=None).values.reshape(28,28)
 
 
         # make a multiplot of the 9 example images 
@@ -80,7 +80,7 @@ def plot_importances(data='MNIST', k=50):
         ei_mlp = pd.read_csv('importances/importances_FashionMnist_0_MLP.csv', header=None).values.reshape(28,28)
         e100_mlp = pd.read_csv('importances/importances_FashionMnist_100_MLP.csv', header=None).values.reshape(28,28)
         e250_mlp = pd.read_csv('importances/importances_FashionMnist_250_MLP.csv', header=None).values.reshape(28,28)
-        e500_mlp = pd.read_csv('importances/importances_FashionMnist_490_MLP.csv', header=None).values.reshape(28,28)
+        e500_mlp = pd.read_csv('importances/importances_FashionMnist_500_MLP.csv', header=None).values.reshape(28,28)
         # print(e50_mlp.reshape(28, 28))
                 
         # plot the example images with one axis for the total plot
