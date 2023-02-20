@@ -45,7 +45,7 @@ def load_madelon_data():
 # The MNIST database of handwritten digits.
 def load_mnist_data(n_training_samples, n_testing_samples):
 
-    # read CIFAR10 data
+    # read MNIST data
     (x, y), (x_test, y_test) = mnist.load_data()
 
     y = np_utils.to_categorical(y, 10)
@@ -71,6 +71,7 @@ def load_mnist_data(n_training_samples, n_testing_samples):
     x_train = x_train.astype('float32')
     x_test = x_test.astype('float32')
 
+    x_train, x_test = x_train.reshape(x_train.shape[0], 784), x_test.reshape(x_test.shape[0], 784)
     return x_train, y_train, x_test, y_test
 
 

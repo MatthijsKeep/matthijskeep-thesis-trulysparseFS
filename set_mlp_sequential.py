@@ -42,13 +42,14 @@ from scipy.sparse import dok_matrix
 from test import svm_test # new 
 from utils.nn_functions import *
 
-from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data
+from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data
 from wasap_sgd.train.monitor import Monitor
 
 import copy
 import datetime
 import json
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
@@ -161,40 +162,45 @@ def select_input_neurons(weights, k):
     """
 
     # get the sum of the absolute values of the weights for each neuron
-    print(weights.shape)
+    # print(weights.shape) # (784, )
+    # print(weights)
+    # print(weights)
     sum_weights = np.abs(weights).sum(axis=1)
-    print(f"The shape of the sum of the weights is: {sum_weights.shape}")
+    # sort the neurons by the sum of the absolute values of the weights
+    # print(sum_weights)
+    # print(f"The shape of the sum of the weights is: {sum_weights.shape}") # (784, 1)
     # get the indices of the k most important neurons
-    print(k)
-    important_neurons_idx = np.argsort(sum_weights, axis=0)[-k:]
+    # print(k)
+    # print the index of the highest weight
+    print(f"The input neuron with the highest weight is: {np.argmax(sum_weights)}")
+    important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:k]
+    # print(important_neurons_idx)
     print(f"The shape of the indices of the k most important neurons is: {important_neurons_idx.shape}")
     # print(f"The {len(important_neurons_idx)} most important neurons are: {important_neurons_idx}")
 
-    important_neurons = lil_matrix((weights.shape[0], weights.shape[1]))
-    # print(f"The weight matrix looks like: {weights}")
+    # important_neurons = lil_matrix((weights.shape[0], weights.shape[1]))
+    # # important_neurons[important_neurons_idx, :] = weights[important_neurons_idx, :]
+    # # print(f"The weight matrix looks like: {weights}")
 
-    # for each neuron, remove it from the sparse matrix if the neuron is not in the list of important neurons
-    for i in range(weights.shape[0]):
-        if i not in important_neurons_idx:
-            weights[i, :] = 0
+    # # for each neuron, remove it from the sparse matrix if the neuron is not in the list of important neurons
+    # for i in range(weights.shape[0]):
+    #     if i not in important_neurons_idx:
+    #         weights[i, :] = 0
     
     
-    important_neurons = weights.tocsr()
-    # print(f"The important neurons matrix looks like: {important_neurons}")
+    # important_neurons = weights.tocsr()
+    # # print(f"The important neurons matrix looks like: {important_neurons}")
     
-
-    # get the sum of the absolute values of the weights for each neuron, and include the indices
-    sum_weights = np.abs(important_neurons).sum(axis=1)
-    # sort the sum of the weights in descending order, and take the first k elements
-    sum_weights = (np.sort(sum_weights, axis=0)[-k:])[::-1]
-    # print(f"The sum of weights for each neuron is: {sum_weights.flatten()}")
+    # # get the sum of the absolute values of the weights for each neuron, and include the indices
+    # sum_weights = np.abs(important_neurons).sum(axis=1)
+    # # sort the sum of the weights in descending order, and take the first k elements
+    # sum_weights = (np.sort(sum_weights, axis=0)[-k:])[::-1]
+    # # print(f"The sum of weights for each neuron is: {sum_weights.flatten()}")
 
     # zip the indices and the sum of the weights
-    important_neurons = np.array(list(zip(np.array(important_neurons_idx), np.array(sum_weights)))).reshape(args.K,2)
+    important_neurons = np.abs(set_mlp.w[1].copy()).sum(axis=1)
     # print(f"The important neurons are: {important_neurons}")
 
-
-    
     return important_neurons_idx, important_neurons
 
 
@@ -254,7 +260,8 @@ class SET_MLP:
         self.save_filename = ""
         self.input_layer_connections = []
         self.monitor = None
-        self.importance_pruning = True
+        self.importance_pruning = False
+        self.input_pruning = True
 
         self.training_time = 0
         self.testing_time = 0
@@ -408,9 +415,12 @@ class SET_MLP:
                 print("In eval loop")
                 # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
                 print(self.get_core_input_connections().shape)
+                print(set_mlp.w[1].copy().shape)
+                print(np.abs(set_mlp.w[1].copy()).sum(axis=1).shape) 
                 selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
+                # print(importances)
 
-                importances_for_eval = pd.DataFrame(importances).to_csv(header=False, index=False)
+                importances_for_eval = pd.DataFrame(np.abs(set_mlp.w[1].copy()).sum(axis=1)).to_csv(header=False, index=False)
 
                 importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
                 if not os.path.exists(os.path.dirname(importances_path)):
@@ -552,14 +562,23 @@ class SET_MLP:
     def weights_evolution_II(self, epoch=0):
         # this represents the core of the SET procedure. It removes the weights closest to zero in each layer and add new random weights
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
+        # Every 50 epochs, save a plot of the distribution of the sum of weights of the input layer
+        if epoch % 50 == 0:
+            sum_incoming_weights = np.abs(self.w[1]).sum(axis=1)
+            plt.hist(sum_incoming_weights, bins=100)
+            plt.title(f"Distribution of the sum of weights of the input layer in epoch {str(epoch)}")
+            # save in a folder called "input_weight_distribution"
+            plt.savefig(f"input_weight_distribution/epoch_{str(epoch)}.png")
+            plt.close()
+
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
             t_ev_1 = datetime.datetime.now()
-            print(i)
-            print(self.w[i].get_shape())
+            print(i) # layer number
+            print(self.w[i].copy().get_shape()) # shape of the layer
 
-            # Importance Pruning (on the hidden layer)
+            # Importance Pruning (on the hidden layer(s)), currenly OFF in my implementation
             if self.importance_pruning and epoch % 10 == 0 and epoch > 100:
                 print("Importance Pruning")
                 # print(self.w[i].shape) # (input, nhidden)
@@ -575,12 +594,53 @@ class SET_MLP:
 
                 weights = self.w[i].tolil()
                 pdw = self.pdw[i].tolil()
-                
+
                 weights[:, ids[:,1]] = 0
                 pdw[:, ids[:,1]] = 0
 
                 self.w[i] = weights.tocsr()
                 self.pdw[i] = pdw.tocsr()
+
+            # Input neuron pruning (on the input layer)
+            if self.input_pruning and epoch % 10 == 0 and epoch > 100 and i == 1:
+                print("Input neuron pruning")
+                # print(f"The shape of the layer is {self.w[i].shape}") # (input, nhidden)
+                sum_incoming_weights = np.abs(self.w[i].copy()).sum(axis=1)
+                print(sum_incoming_weights.shape) # (input, 1))
+                # print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, nhidden))
+                t = np.percentile(sum_incoming_weights, 20, axis=0)
+                print(t)
+                sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+                # print(sum_incoming_weights)
+                ids = np.argwhere(sum_incoming_weights == 0)
+                print("ids", ids.shape)
+                # overlay the ids on a 28*28 matrix and set the values to 0
+                matrix2828 = np.ones((28,28))
+                matrix2828 = matrix2828.flatten()
+                matrix2828[ids] = 0
+                matrix2828 = matrix2828.reshape((28,28))
+                # plot the matrix with the epoch number as title without interruping the training
+                plt.imshow(matrix2828, cmap='gray')
+                plt.title(f"Epoch {epoch}")
+                # save into the pruning directory
+                plt.savefig(f"pruning/{epoch}.png")
+                plt.close()
+
+                # print(matrix2828.shape)
+                # print(matrix2828)
+                # print(ids)
+
+
+                weights = self.w[i].tolil()
+                pdw = self.pdw[i].tolil()
+
+                weights[ids[:,0], :] = 0
+                pdw[ids[:,0], :] = 0
+
+
+                self.w[i] = weights.tocsr()
+                self.pdw[i] = pdw.tocsr()
+
 
             # converting to COO form - Added by Amar
             wcoo = self.w[i].tocoo()
@@ -717,7 +777,7 @@ if __name__ == "__main__":
     # 
 
     epsilon = 10  # set the sparsity level
-    zeta = 0.2 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
+    zeta = 0.3 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
     no_training_epochs = args.epochs
     batch_size = 128
     dropout_rate = 0.3
@@ -731,7 +791,10 @@ if __name__ == "__main__":
 
     for i in range(runs):
 
-        x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
+        if args.data == 'FashionMnist':
+            x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
+        elif args.data == 'mnist':
+            x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
         np.random.seed(i)
 
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
@@ -772,7 +835,7 @@ if __name__ == "__main__":
         start_time = time.time()
         accuracy, _ = set_mlp.predict(x_test, y_test, batch_size=100)
         # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
-        selected_features, importances = select_input_neurons(set_mlp.w[1], args.K)
+        selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
         # print(set_mlp.w[1])
         print(f"The choosing of the {args.K} most important weights took {time.time() - start_time} seconds")
         

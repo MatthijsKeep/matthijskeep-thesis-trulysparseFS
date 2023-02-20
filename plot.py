@@ -30,30 +30,11 @@ def plot_importances(data='MNIST', k=50):
         # retrieve 9 examples from data/MNIST/training.pt and compress into one image of size 28*28
         mnist_example = torch.load('data/MNIST/processed/training.pt')
         mnist_example = mnist_example[0][:25]
-
-
-        # retrieve the importances from literature/WAST/importances for the MLP 
-        ei_mlp = pd.read_csv('importances/importances_mnist_0_MLP.csv', header=None)
-        e1_mlp = pd.read_csv('importances/importances_mnist_1_MLP.csv', header=None)
-        e5_mlp = pd.read_csv('importances/importances_mnist_5_MLP.csv', header=None)
-        e10_mlp = pd.read_csv('importances/importances_mnist_10_MLP.csv', header=None)
-
-        # retrieve the importances from literature/WAST/importances for the WAST model
-        ei_wast = pd.read_csv('importances/importances_mnist_0_WAST.csv', header=None)
-        e1_wast = pd.read_csv('importances/importances_mnist_1_WAST.csv', header=None)
-        e5_wast = pd.read_csv('importances/importances_mnist_5_WAST.csv', header=None)
-        e10_wast = pd.read_csv('importances/importances_mnist_10_WAST.csv', header=None)
-
-        # reshape the importances to 28x28 (the size of the MNIST images)
-        importances_ei_mlp = ei_mlp.values.reshape(28, 28)
-        importances_e1_mlp = e1_mlp.values.reshape(28, 28)
-        importances_e5_mlp = e5_mlp.values.reshape(28, 28)
-        importances_e10_mlp = e10_mlp.values.reshape(28, 28)
-
-        importances_ei_wast = ei_wast.values.reshape(28, 28)
-        importances_e1_wast = e1_wast.values.reshape(28, 28)
-        importances_e5_wast = e5_wast.values.reshape(28, 28)
-        importances_e10_wast = e10_wast.values.reshape(28, 28)
+        
+        ei_mlp = pd.read_csv('importances/importances_mnist_0_MLP.csv', header=None).values.reshape(28,28)   
+        e100_mlp = pd.read_csv('importances/importances_mnist_100_MLP.csv', header=None).values.reshape(28,28)
+        e250_mlp = pd.read_csv('importances/importances_mnist_250_MLP.csv', header=None).values.reshape(28,28)
+        e500_mlp = pd.read_csv('importances/importances_mnist_490_MLP.csv', header=None).values.reshape(28,28)
 
 
         # make a multiplot of the 9 example images 
@@ -67,33 +48,26 @@ def plot_importances(data='MNIST', k=50):
 
 
         # make a 2x4 multiplot of the importances with MLP on the top row and WAST on the bottom row
-        fig, axs = plt.subplots(2, 4, figsize=(20, 10))
-        axs[0, 0].imshow(importances_ei_mlp)
-        axs[0, 0].set_title('S-WAST initialization')
-        # axs[0, 0].axis('off')
-        axs[0, 1].imshow(importances_e1_mlp)
-        axs[0, 1].set_title('S-WAST epoch 1')
-        # axs[0, 1].axis('off')
-        axs[0, 2].imshow(importances_e5_mlp)
-        axs[0, 2].set_title('S-WAST epoch 5')
-        # axs[0, 2].axis('off')
-        axs[0, 3].imshow(importances_e10_mlp)
-        axs[0, 3].set_title('S-WAST epoch 10')
-        # axs[0, 3].axis('off')
-        axs[1, 0].imshow(importances_ei_wast)
-        axs[1, 0].set_title('WAST initialization')
-        # axs[1, 0].axis('off')
-        axs[1, 1].imshow(importances_e1_wast)
-        axs[1, 1].set_title('WAST epoch 1')
-        # axs[1, 1].axis('off')
-        axs[1, 2].imshow(importances_e5_wast)
-        axs[1, 2].set_title('WAST epoch 5')
-        # axs[1, 2].axis('off')
-        axs[1, 3].imshow(importances_e10_wast)
-        axs[1, 3].set_title('WAST epoch 10')
-        # axs[1, 3].axis('off')
+        plt.show()
 
-        fig.suptitle('Importances of the pixels in the MNIST dataset')
+        fig, axs = plt.subplots(1, 4, figsize=(20, 10))
+        # axs[0, 0].imshow(fashion_example, cmap='gray')
+        # axs[0, 0].axis('off')
+        # axs[0, 0].set_title('9 Example images')
+        axs[0].imshow(ei_mlp)
+        axs[0].set_title('S-WAST initialization')
+        # axs[0, 1].axis('off')
+        axs[1].imshow(e100_mlp)
+        axs[1].set_title('S-WAST epoch 100')
+        # axs[0, 2].axis('off')
+        axs[2].imshow(e250_mlp)
+        axs[2].set_title('S-WAST epoch 250')
+        # axs[0, 3].axis('off')
+        axs[3].imshow(e500_mlp)
+        axs[3].set_title('S-WAST epoch 500')
+
+
+        fig.suptitle('Importances of the pixels in the FashionMNIST dataset')
         plt.tight_layout()
         plt.show()
 
@@ -102,27 +76,13 @@ def plot_importances(data='MNIST', k=50):
         fashion_example = torch.load('data/fashionMNIST/processed/training.pt')
         fashion_example = fashion_example[0][:25]
 
-        ei_mlp = pd.read_csv('importances/importances_FashionMnist_0_MLP.csv', header=None)
-        e1_mlp = pd.read_csv('importances/importances_FashionMnist_1_MLP.csv', header=None)
-        e5_mlp = pd.read_csv('importances/importances_FashionMnist_5_MLP.csv', header=None)
-        e10_mlp = pd.read_csv('importances/importances_FashionMnist_10_MLP.csv', header=None)
-
-        ei_wast = pd.read_csv('importances/importances_FashionMnist_0_WAST.csv', header=None)
-        e1_wast = pd.read_csv('importances/importances_FashionMnist_1_WAST.csv', header=None)
-        e5_wast = pd.read_csv('importances/importances_FashionMnist_5_WAST.csv', header=None)
-        e10_wast = pd.read_csv('importances/importances_FashionMnist_10_WAST.csv', header=None)
-
-        importances_ei_mlp = ei_mlp.values.reshape(28, 28)
-        importances_e1_mlp = e1_mlp.values.reshape(28, 28)
-        importances_e5_mlp = e5_mlp.values.reshape(28, 28)
-        importances_e10_mlp = e10_mlp.values.reshape(28, 28)
-
-        importances_ei_wast = ei_wast.values.reshape(28, 28)
-        importances_e1_wast = e1_wast.values.reshape(28, 28)
-        importances_e5_wast = e5_wast.values.reshape(28, 28)
-        importances_e10_wast = e10_wast.values.reshape(28, 28)
-
-
+        # import the importances and reshape them to 28x28
+        ei_mlp = pd.read_csv('importances/importances_FashionMnist_0_MLP.csv', header=None).values.reshape(28,28)
+        e100_mlp = pd.read_csv('importances/importances_FashionMnist_100_MLP.csv', header=None).values.reshape(28,28)
+        e250_mlp = pd.read_csv('importances/importances_FashionMnist_250_MLP.csv', header=None).values.reshape(28,28)
+        e500_mlp = pd.read_csv('importances/importances_FashionMnist_490_MLP.csv', header=None).values.reshape(28,28)
+        # print(e50_mlp.reshape(28, 28))
+                
         # plot the example images with one axis for the total plot
 
         fig, axs = plt.subplots(5, 5, figsize=(10, 10))
@@ -132,39 +92,22 @@ def plot_importances(data='MNIST', k=50):
         # plt.tight_layout()
         plt.show()
 
-        fig, axs = plt.subplots(2, 4, figsize=(20, 10))
+        fig, axs = plt.subplots(1, 4, figsize=(20, 10))
         # axs[0, 0].imshow(fashion_example, cmap='gray')
         # axs[0, 0].axis('off')
         # axs[0, 0].set_title('9 Example images')
-        axs[0, 0].imshow(importances_ei_mlp)
-        axs[0, 0].set_title('S-WAST initialization')
+        axs[0].imshow(ei_mlp)
+        axs[0].set_title('S-WAST initialization')
         # axs[0, 1].axis('off')
-        axs[0, 1].imshow(importances_e1_mlp)
-        axs[0, 1].set_title('S-WAST epoch 1')
+        axs[1].imshow(e100_mlp)
+        axs[1].set_title('S-WAST epoch 100')
         # axs[0, 2].axis('off')
-        axs[0, 2].imshow(importances_e5_mlp)
-        axs[0, 2].set_title('S-WAST epoch 5')
+        axs[2].imshow(e250_mlp)
+        axs[2].set_title('S-WAST epoch 250')
         # axs[0, 3].axis('off')
-        axs[0, 3].imshow(importances_e10_mlp)
-        axs[0, 3].set_title('S-WAST epoch 10')
-        # axs[0, 4].axis('off')
+        axs[3].imshow(e500_mlp)
+        axs[3].set_title('S-WAST epoch 500')
 
-
-        # axs[1, 0].imshow(fashion_example, cmap='gray')
-        # axs[1, 0].axis('off')
-        # axs[1, 0].set_title('Example images')
-        axs[1, 0].imshow(importances_ei_wast)
-        axs[1, 0].set_title('WAST initialization')
-        # axs[1, 1].axis('off')
-        axs[1, 1].imshow(importances_e1_wast)
-        axs[1, 1].set_title('WAST epoch 1')
-        # axs[1, 2].axis('off')
-        axs[1, 2].imshow(importances_e5_wast)
-        axs[1, 2].set_title('WAST epoch 5')
-        # axs[1, 3].axis('off')
-        axs[1, 3].imshow(importances_e10_wast)
-        axs[1, 3].set_title('WAST epoch 10')
-        # axs[1, 4].axis('off')
 
         fig.suptitle('Importances of the pixels in the FashionMNIST dataset')
         plt.tight_layout()
@@ -364,9 +307,8 @@ def plot_average(data='MNIST'):
 
 
 if __name__ == '__main__':
-    # plot_importances(args.data)
-    # 
-    plot_features(args.data)
+    plot_importances(args.data)
+    # plot_features(args.data)
     # plot_average(args.data)
 
 
