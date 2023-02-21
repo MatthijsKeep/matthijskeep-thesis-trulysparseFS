@@ -285,6 +285,52 @@ class SET_MLP:
             self.b[i + 1] = np.zeros(dimensions[i + 1], dtype='float32')
             self.activations[i + 2] = activations[i]
 
+        # Added by Matthijs
+        self.layer_importances = {} # NOTE (Matthijs): Like this or as a list?
+        self._init_layer_importances()
+
+    def _init_layer_importances(self):
+        """
+        Initialize the layer importances for each layer
+
+        :return: None
+        """
+
+        print("Initializing layer importances")
+        print("================================")
+        # print(f"We are looking at this amount of layers: {self.n_layers}")
+        for i in range(1, self.n_layers+1):
+            # print(f"Initializing the importances for layer {i}")
+            if i == 1: # Input layer
+                # print(f"{i} == 1")
+                # print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
+                self.layer_importances[i] = np.zeros(self.w[i].shape[0], dtype='float32')
+                # print(f"The shape of the input layer is: {self.w[i].shape[0]}, which is layer {i}")
+            if i == self.n_layers: # Output layer
+                # print(f"{i} == {self.n_layers}")
+                # print(f"The shape of the weight matrix we are looking at is: {self.w[i-1].shape}")
+                self.layer_importances[i] = np.zeros(self.w[i-1].shape[1], dtype='float32')
+                # print(f"The shape of the output layer is: {self.w[i-1].shape[1]}, which is layer {i}")
+            # for the hidden layers all neurons have the same importance
+            if i not in [1, self.n_layers]: # All other layers (hidden layers)
+                # print(f"{i} not in [1, {self.n_layers}]")
+                # print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
+                self.layer_importances[i] = np.ones(self.w[i].shape[0], dtype='float32')
+                # print(f"The shape of the hidden layer is: {self.w[i].shape[0]}, which is layer {i}")
+
+        # print(f"The shape of the layer importances is: {self.layer_importances}")
+            
+
+    def _update_layer_importances(self, layer):
+
+        # Update the importances of the input layer
+        # TODO: FIX
+        self.layer_importances[1] += self.get_core_input_connections()
+
+        # Update the importance of the output layer
+        # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer
+        self.layer_importances[layer] += importance    
+        
     def _feed_forward(self, x, drop=False):
         """
         Execute a forward feed through the network.
@@ -410,7 +456,7 @@ class SET_MLP:
 
         for i in range(epochs):
             # Shuffle the data
-            if i == 0 or i == 1 or i == 5 or i == 10 or i % 10 == 0:
+            if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % 50 == 0:
                 start_time = time.time()
                 print("In eval loop")
                 # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
@@ -779,7 +825,7 @@ if __name__ == "__main__":
     # erdos renyi formula for sparsity level
     # 
 
-    epsilon = 10  # set the sparsity level
+    epsilon = 20  # set the sparsity level
     zeta = 0.3 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
     no_training_epochs = args.epochs
     batch_size = 128
@@ -803,7 +849,11 @@ if __name__ == "__main__":
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
 
         set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
-                          (AlternatedLeftReLU(-allrelu_slope), Softmax), epsilon=epsilon)
+                          (AlternatedLeftReLU(-allrelu_slope), Softmax), epsilon=epsilon) # One-layer version
+        # set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, no_hidden_neurons_layer, no_hidden_neurons_layer, y_train.shape[1]),
+        #                   (AlternatedLeftReLU(-allrelu_slope), AlternatedLeftReLU(allrelu_slope), AlternatedLeftReLU(-allrelu_slope), Softmax), 
+        #                    epsilon=epsilon) # Three-layer version                
+
 
         start_time = time.time()
         # train SET-MLP
@@ -870,6 +920,7 @@ if __name__ == "__main__":
             f.write(importances_for_eval)
 
         # change x_train and x_test to only have the selected features
+        # print(selected_features)
         x_train_new = np.squeeze(x_train[:, selected_features])
         x_test_new = np.squeeze(x_test[:, selected_features])
         # change y_train and y_test from one-hot to single label
@@ -887,7 +938,6 @@ if __name__ == "__main__":
         # time the tesitng
         start_time = time.time()
         accuracy_topk = svm_test(x_train_new, y_train, x_test_new, y_test)
-        print("Not stuck here - 0")
         print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
         print(f"The testing of the {args.K} most important weights took {time.time() - start_time} seconds")
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
