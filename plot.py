@@ -31,7 +31,11 @@ def plot_importances(data='MNIST', k=50):
         mnist_example = torch.load('data/MNIST/processed/training.pt')
         mnist_example = mnist_example[0][:25]
         
-        ei_mlp = pd.read_csv('importances/importances_mnist_0_MLP.csv', header=None).values.reshape(28,28)   
+        ei_mlp = pd.read_csv('importances/importances_mnist_0_MLP.csv', header=None).values.reshape(28,28)
+        e5_mlp = pd.read_csv('importances/importances_mnist_5_MLP.csv', header=None).values.reshape(28,28)
+        e10_mlp = pd.read_csv('importances/importances_mnist_10_MLP.csv', header=None).values.reshape(28,28)
+        e25_mlp = pd.read_csv('importances/importances_mnist_25_MLP.csv', header=None).values.reshape(28,28)
+        e50_mlp = pd.read_csv('importances/importances_mnist_50_MLP.csv', header=None).values.reshape(28,28)
         e100_mlp = pd.read_csv('importances/importances_mnist_100_MLP.csv', header=None).values.reshape(28,28)
         e250_mlp = pd.read_csv('importances/importances_mnist_250_MLP.csv', header=None).values.reshape(28,28)
         e500_mlp = pd.read_csv('importances/importances_mnist_500_MLP.csv', header=None).values.reshape(28,28)
@@ -50,21 +54,33 @@ def plot_importances(data='MNIST', k=50):
         # make a 2x4 multiplot of the importances with MLP on the top row and WAST on the bottom row
         plt.show()
 
-        fig, axs = plt.subplots(1, 4, figsize=(20, 10))
+        fig, axs = plt.subplots(1, 8, figsize=(20, 10))
         # axs[0, 0].imshow(fashion_example, cmap='gray')
         # axs[0, 0].axis('off')
         # axs[0, 0].set_title('9 Example images')
         axs[0].imshow(ei_mlp)
         axs[0].set_title('S-WAST initialization')
+
+        axs[1].imshow(e5_mlp)
+        axs[1].set_title('S-WAST epoch 5')
+
+        axs[2].imshow(e10_mlp)
+        axs[2].set_title('S-WAST epoch 10')
+
+        axs[3].imshow(e25_mlp)
+        axs[3].set_title('S-WAST epoch 25')
+
+        axs[4].imshow(e50_mlp)
+        axs[4].set_title('S-WAST epoch 50')
         # axs[0, 1].axis('off')
-        axs[1].imshow(e100_mlp)
-        axs[1].set_title('S-WAST epoch 100')
+        axs[5].imshow(e100_mlp)
+        axs[5].set_title('S-WAST epoch 100')
         # axs[0, 2].axis('off')
-        axs[2].imshow(e250_mlp)
-        axs[2].set_title('S-WAST epoch 250')
+        axs[6].imshow(e250_mlp)
+        axs[6].set_title('S-WAST epoch 250')
         # axs[0, 3].axis('off')
-        axs[3].imshow(e500_mlp)
-        axs[3].set_title('S-WAST epoch 500')
+        axs[7].imshow(e500_mlp)
+        axs[7].set_title('S-WAST epoch 500')
 
 
         fig.suptitle('Importances of the pixels in the MNIST dataset')

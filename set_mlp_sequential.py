@@ -179,7 +179,7 @@ def select_input_neurons(weights, k):
     print(f"The input neuron with the highest weight is: {np.argmax(sum_weights)}")
     important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:k]
     # print(important_neurons_idx)
-    print(f"The shape of the indices of the k most important neurons is: {important_neurons_idx.shape}")
+    # print(f"The shape of the indices of the k most important neurons is: {important_neurons_idx.shape}")
     # print(f"The {len(important_neurons_idx)} most important neurons are: {important_neurons_idx}")
 
     # important_neurons = lil_matrix((weights.shape[0], weights.shape[1]))
@@ -491,7 +491,7 @@ class SET_MLP:
                 print("Now saving the importances!")
                 print("==================================")
                 importances_for_eval = self.input_sum.copy()
-                print(importances_for_eval.shape)
+                # print(importances_for_eval.shape)
                 importances_for_eval = pd.DataFrame(importances_for_eval).to_csv(header=False, index=False)
 
                 importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
@@ -553,9 +553,9 @@ class SET_MLP:
                 metrics[i, 2] = accuracy_train
                 metrics[i, 3] = accuracy_test
 
-                print(f"Testing time: {t4 - t3}\n; Loss test: {loss_test}; \n"
+                print(f"Testing time: {t4 - t3}; \n Loss test: {loss_test}; \n"
                                  f"Accuracy test: {accuracy_test}; \n"
-                                 f"Maximum accuracy val: {maximum_accuracy}")
+                                 f"Maximum accuracy val: {maximum_accuracy} \n")
                 self.testing_time += (t4 - t3).seconds
 
 
@@ -680,16 +680,19 @@ class SET_MLP:
                 self.pdw[i] = pdw.tocsr()
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 10 == 0 and epoch > 50 and i == 1:
+            if self.input_pruning and epoch % 5 == 0 and epoch > 25 and i == 1:
                 print("Input neuron pruning")
                 print("=====================================")
+                zerow_before = np.count_nonzero(self.input_sum == 0)
+                zerow_pct = zerow_before / self.input_sum.shape[0] * 100
+                print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
+                        which is {zerow_pct}% of the total neurons.")
 
-                # time 
                 start_input_pruning = datetime.datetime.now()
                 # print(f"The shape of the layer is {self.w[i].shape}") # (input, nhidden)
                 sum_incoming_weights = np.array(self.input_sum.copy())
-                # find the lowest non-zero value in the sum of the weights, so that it always removes at least one neuron
-                lowest_in_sum = np.min(sum_incoming_weights[np.nonzero(sum_incoming_weights)]) 
+                
+                
                 # print(f"The lowest value in the neuron weights is: {lowest_in_sum}")
                 # Calculating the sum of the incoming weights for each node in the hidden layer.
                 # print(sum_incoming_weights.shape) # (1, input))
@@ -697,8 +700,13 @@ class SET_MLP:
                 # get 20th percentile from (1, input)
                 t = np.percentile(sum_incoming_weights, 20)
                 if t == 0:
-                    print(f"NOTE: t is 0, setting it to lowest_in_sum: {lowest_in_sum}")
-                    t = lowest_in_sum
+                    # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
+                    # It should be a function of epoch/n_epochs
+                    curr_percentile = 20 + (epoch/no_training_epochs) * 60
+                    t_2 = np.percentile(sum_incoming_weights, curr_percentile)
+                    # prune the weights that are lower than 
+                    print(f"\n NOTE: t is 0, setting it to t_2 : {t_2}, which prunes the {curr_percentile}th percentile of the weights")
+                    t = t_2
                 # print(t)
                 # breakpoint()
                 sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
@@ -716,7 +724,7 @@ class SET_MLP:
                 # save into the pruning directory
                 plt.savefig(f"pruning/{epoch}.png")
                 plt.close()
-                print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
+                
 
                 # print(matrix2828.shape)
                 # print(matrix2828)
@@ -732,6 +740,8 @@ class SET_MLP:
 
                 self.w[i] = weights.tocsr()
                 self.pdw[i] = pdw.tocsr()
+
+                print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
 
 
             # converting to COO form - Added by Amar
@@ -811,7 +821,7 @@ class SET_MLP:
             while length_random > 0:
                 if self.weight_init == 'neuron_importance':
                     # We need to add the connections differently for the three layer types (input, hidden, output)
-                    print(f"Now adding new connections with a bias towards more important neurons, there are {length_random} connections to add")
+                    # print(f"Now adding new connections with a bias towards more important neurons, there is/are {length_random} connection(s) to add")
                     # print("=====================================")
                     # Check the neuron importance, bias new connections to the most important neurons
                     neuron_importance_i = self.layer_importances[i]
