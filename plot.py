@@ -94,6 +94,10 @@ def plot_importances(data='MNIST', k=50):
 
         # import the importances and reshape them to 28x28
         ei_mlp = pd.read_csv('importances/importances_FashionMnist_0_MLP.csv', header=None).values.reshape(28,28)
+        e5_mlp = pd.read_csv('importances/importances_FashionMnist_5_MLP.csv', header=None).values.reshape(28,28)
+        e10_mlp = pd.read_csv('importances/importances_FashionMnist_10_MLP.csv', header=None).values.reshape(28,28)
+        e25_mlp = pd.read_csv('importances/importances_FashionMnist_25_MLP.csv', header=None).values.reshape(28,28)
+        e50_mlp = pd.read_csv('importances/importances_FashionMnist_50_MLP.csv', header=None).values.reshape(28,28)
         e100_mlp = pd.read_csv('importances/importances_FashionMnist_100_MLP.csv', header=None).values.reshape(28,28)
         e250_mlp = pd.read_csv('importances/importances_FashionMnist_250_MLP.csv', header=None).values.reshape(28,28)
         e500_mlp = pd.read_csv('importances/importances_FashionMnist_500_MLP.csv', header=None).values.reshape(28,28)
@@ -108,21 +112,33 @@ def plot_importances(data='MNIST', k=50):
         # plt.tight_layout()
         plt.show()
 
-        fig, axs = plt.subplots(1, 4, figsize=(20, 10))
+        fig, axs = plt.subplots(1, 8, figsize=(20, 10))
         # axs[0, 0].imshow(fashion_example, cmap='gray')
         # axs[0, 0].axis('off')
         # axs[0, 0].set_title('9 Example images')
         axs[0].imshow(ei_mlp)
         axs[0].set_title('S-WAST initialization')
-        # axs[0, 1].axis('off')
-        axs[1].imshow(e100_mlp)
-        axs[1].set_title('S-WAST epoch 100')
+
+        axs[1].imshow(e5_mlp)
+        axs[1].set_title('S-WAST epoch 5')
+
+        axs[2].imshow(e10_mlp)
+        axs[2].set_title('S-WAST epoch 10')
+
+        axs[3].imshow(e25_mlp)
+        axs[3].set_title('S-WAST epoch 25')
+
+        axs[4].imshow(e50_mlp)
+        axs[4].set_title('S-WAST epoch 50')
+
+        axs[5].imshow(e100_mlp)
+        axs[5].set_title('S-WAST epoch 100')
         # axs[0, 2].axis('off')
-        axs[2].imshow(e250_mlp)
-        axs[2].set_title('S-WAST epoch 250')
+        axs[6].imshow(e250_mlp)
+        axs[6].set_title('S-WAST epoch 250')
         # axs[0, 3].axis('off')
-        axs[3].imshow(e500_mlp)
-        axs[3].set_title('S-WAST epoch 500')
+        axs[7].imshow(e500_mlp)
+        axs[7].set_title('S-WAST epoch 500')
 
 
         fig.suptitle('Importances of the pixels in the FashionMNIST dataset')
@@ -325,6 +341,6 @@ def plot_average(data='MNIST'):
 if __name__ == '__main__':
     plot_importances(args.data)
     # plot_features(args.data)
-    # plot_average(args.data)
+    plot_average(args.data)
 
 

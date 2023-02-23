@@ -680,10 +680,18 @@ class SET_MLP:
                 self.pdw[i] = pdw.tocsr()
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 5 == 0 and epoch > 25 and i == 1:
+            if self.input_pruning and epoch % 5 == 0 and epoch > 5 and i == 1:
                 print("Input neuron pruning")
                 print("=====================================")
                 zerow_before = np.count_nonzero(self.input_sum == 0)
+                # TODO: Add different amount of min features for madelon dataset for instance
+                # print(self.input_sum.shape[0] - (args.K * 2))
+                # print(self.input_sum.shape)
+
+                if zerow_before > self.input_sum.shape[0] - (args.K * 2):
+                    print("WARNING: No more neurons to prune")
+                    self.input_pruning = False
+                    continue
                 zerow_pct = zerow_before / self.input_sum.shape[0] * 100
                 print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
                         which is {zerow_pct}% of the total neurons.")
@@ -698,11 +706,12 @@ class SET_MLP:
                 # print(sum_incoming_weights.shape) # (1, input))
                 # print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, input))
                 # get 20th percentile from (1, input)
+                curr_percentile = 20 + ((epoch/no_training_epochs) * 60)
                 t = np.percentile(sum_incoming_weights, 20)
                 if t == 0:
                     # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
                     # It should be a function of epoch/n_epochs
-                    curr_percentile = 20 + (epoch/no_training_epochs) * 60
+                    curr_percentile = 20 + ((epoch/no_training_epochs) * 70)
                     t_2 = np.percentile(sum_incoming_weights, curr_percentile)
                     # prune the weights that are lower than 
                     print(f"\n NOTE: t is 0, setting it to t_2 : {t_2}, which prunes the {curr_percentile}th percentile of the weights")
@@ -829,6 +838,8 @@ class SET_MLP:
                     # make neuron importance sum to 1
                     neuron_importance_i = neuron_importance_i / np.sum(neuron_importance_i)
                     neuron_importance_j = neuron_importance_j / np.sum(neuron_importance_j)
+
+                    #TODO : Also add a completely random element to keep exploring?
 
                     ik = np.random.choice(self.dimensions[i - 1], size=length_random, p=neuron_importance_i).astype('int32')
                     # print("Printing the ik values")
