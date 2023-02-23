@@ -67,7 +67,7 @@ def plot_importances(data='MNIST', k=50):
         axs[3].set_title('S-WAST epoch 500')
 
 
-        fig.suptitle('Importances of the pixels in the FashionMNIST dataset')
+        fig.suptitle('Importances of the pixels in the MNIST dataset')
         plt.tight_layout()
         plt.show()
 

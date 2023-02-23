@@ -127,6 +127,10 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
     if weight_init == 'xavier':
         limit = np.sqrt(6. / (float(n_rows) + float(n_cols)))
 
+    if weight_init == 'neuron_importance':
+        limit = np.sqrt(6. / float(n_rows))
+        # TODO: We might want to initialize the weights differently (in a smart way) but I am not sure how to do it yet
+
     mask_weights = np.random.rand(n_rows, n_cols)
     prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections
 
@@ -232,7 +236,7 @@ def print_and_log(msg):
 
 
 class SET_MLP:
-    def __init__(self, dimensions, activations, epsilon=20, weight_init='he_uniform'):
+    def __init__(self, dimensions, activations, epsilon=20, weight_init='neuron_importance'):
         """
         :param dimensions: (tpl/ list) Dimensions of the neural net. (input, hidden layer, output)
         :param activations: (tpl/ list) Activations functions.
@@ -327,17 +331,17 @@ class SET_MLP:
         start_time = time.time()
         bal = 0.75
         temp = np.array(self.input_sum.copy()).reshape(-1)
-        print(f"The shapes I add together are {self.layer_importances[1].shape} and {temp.shape}")
-        print(f"The left side of the equation has mean {(self.layer_importances[1] * bal).mean()}")
+        # print(f"The shapes I add together are {self.layer_importances[1].shape} and {temp.shape}")
+        # print(f"The left side of the equation has mean {(self.layer_importances[1] * bal).mean()}")
         # print(np.squeeze(self.input_sum))
-        print(f"The right side of the equation has mean {(temp * (1 - bal)).mean()}")
+        # print(f"The right side of the equation has mean {(temp * (1 - bal)).mean()}")
         # TODO: Determine balancing parameter
         
         self.layer_importances[1] = self.layer_importances[1] * bal + temp * (1 - bal)
-        print(f"The shape of the input layer importances is: {self.layer_importances[1].shape}")
-        print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
-        print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
-        print(f"The mean neuron importance is: {self.layer_importances[1].mean()}")
+        # print(f"The shape of the input layer importances is: {self.layer_importances[1].shape}")
+        # print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
+        # print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
+        # print(f"The mean neuron importance is: {self.layer_importances[1].mean()}")
         # print("test")
         # Update the importance of the output layer
         # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer  
@@ -676,17 +680,27 @@ class SET_MLP:
                 self.pdw[i] = pdw.tocsr()
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 10 == 0 and epoch > 1 and i == 1:
+            if self.input_pruning and epoch % 10 == 0 and epoch > 50 and i == 1:
                 print("Input neuron pruning")
+                print("=====================================")
+
                 # time 
                 start_input_pruning = datetime.datetime.now()
                 # print(f"The shape of the layer is {self.w[i].shape}") # (input, nhidden)
                 sum_incoming_weights = np.array(self.input_sum.copy())
-                print(sum_incoming_weights.shape) # (1, input))
-                print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, input))
+                # find the lowest non-zero value in the sum of the weights, so that it always removes at least one neuron
+                lowest_in_sum = np.min(sum_incoming_weights[np.nonzero(sum_incoming_weights)]) 
+                # print(f"The lowest value in the neuron weights is: {lowest_in_sum}")
+                # Calculating the sum of the incoming weights for each node in the hidden layer.
+                # print(sum_incoming_weights.shape) # (1, input))
+                # print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, input))
                 # get 20th percentile from (1, input)
                 t = np.percentile(sum_incoming_weights, 20)
-                print(t)
+                if t == 0:
+                    print(f"NOTE: t is 0, setting it to lowest_in_sum: {lowest_in_sum}")
+                    t = lowest_in_sum
+                # print(t)
+                # breakpoint()
                 sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
                 # print(sum_incoming_weights)
                 ids = np.argwhere(sum_incoming_weights == 0)
@@ -736,19 +750,31 @@ class SET_MLP:
             first_zero_pos = find_first_pos(values, 0)
             last_zero_pos = find_last_pos(values, 0)
 
-            largest_negative = values[int((1-self.zeta) * first_zero_pos)] 
+            largest_negative = values[int((1-self.zeta) * first_zero_pos)]
             smallest_positive = values[int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
 
-            # remove the weights (W) closest to zero and modify PD as well # TODO: change to removing neurons instead of weights
+            # remove the weights (W) closest to zero and modify PD as well 
+            print("Starting to remove weights")
+            print("=====================================")
             vals_w_new = vals_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
+            # print(f"The shape of the new vals_w is {vals_w_new.shape}")
+            # print(vals_w_new)
             rows_w_new = rows_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
+            # print(f"The shape of the new rows_w is {rows_w_new.shape}")
+            # print(rows_w_new)
             cols_w_new = cols_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
+            # print(f"The shape of the new cols_w is {cols_w_new.shape}")
+            # print(cols_w_new)
 
             new_w_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
             old_pd_row_col_index = np.stack((rows_pd, cols_pd), axis=-1)
+            # print(f"The shape of the new w row col index is {new_w_row_col_index.shape}")
+            # print(new_w_row_col_index)
 
             new_pd_row_col_index_flag = array_intersect(old_pd_row_col_index, new_w_row_col_index)  # careful about order
 
+            # print(f"The shape of the new pd row col index flag is {new_pd_row_col_index_flag.shape}")
+            # print(new_pd_row_col_index_flag)
             vals_pd_new = vals_pd[new_pd_row_col_index_flag]
             rows_pd_new = rows_pd[new_pd_row_col_index_flag]
             cols_pd_new = cols_pd[new_pd_row_col_index_flag]
@@ -756,6 +782,7 @@ class SET_MLP:
             self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)), (self.dimensions[i - 1], self.dimensions[i])).tocsr()
 
             if i == 1:
+                print("Now saving the input layer connections")
                 self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
                                                                (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
                 np.savez_compressed(
@@ -773,12 +800,36 @@ class SET_MLP:
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
                 if self.weight_init == 'xavier':
                     limit = np.sqrt(6. / (float(self.dimensions[i - 1]) + float(self.dimensions[i])))
+                if self.weight_init == 'neuron_importance':
+                    # TODO: FIX
+                    limit = np.sqrt(6. / float(self.dimensions[i - 1]))
                 random_vals = np.random.uniform(-limit, limit, length_random)
 
+
             # adding  (wdok[ik,jk]!=0): condition
+            # NOTE (Matthijs): I think here we should add the new connections in a non-random way
             while length_random > 0:
-                ik = np.random.randint(0, self.dimensions[i - 1], size=length_random, dtype='int32')
-                jk = np.random.randint(0, self.dimensions[i], size=length_random, dtype='int32')
+                if self.weight_init == 'neuron_importance':
+                    # We need to add the connections differently for the three layer types (input, hidden, output)
+                    print(f"Now adding new connections with a bias towards more important neurons, there are {length_random} connections to add")
+                    # print("=====================================")
+                    # Check the neuron importance, bias new connections to the most important neurons
+                    neuron_importance_i = self.layer_importances[i]
+                    neuron_importance_j = self.layer_importances[i + 1]
+                    # make neuron importance sum to 1
+                    neuron_importance_i = neuron_importance_i / np.sum(neuron_importance_i)
+                    neuron_importance_j = neuron_importance_j / np.sum(neuron_importance_j)
+
+                    ik = np.random.choice(self.dimensions[i - 1], size=length_random, p=neuron_importance_i).astype('int32')
+                    # print("Printing the ik values")
+                    # print(ik)
+                    # print(f"The shape of ik in layer {i} is {ik.shape}")
+                    # jk = np.random.randint(0, self.dimensions[i], size=length_random, dtype='int32')
+                    # also bias the neurons it connects to towards the most important neurons
+                    jk = np.random.choice(self.dimensions[i], size=length_random, p=neuron_importance_j).astype('int32')
+                else:
+                    ik = np.random.randint(0, self.dimensions[i - 1], size=length_random, dtype='int32')
+                    jk = np.random.randint(0, self.dimensions[i], size=length_random, dtype='int32')
 
                 random_w_row_col_index = np.stack((ik, jk), axis=-1)
                 random_w_row_col_index = np.unique(random_w_row_col_index, axis=0)  # removing duplicates in new rows&cols
@@ -792,7 +843,7 @@ class SET_MLP:
                 rows_w_new = np.append(rows_w_new, ik_new)
                 cols_w_new = np.append(cols_w_new, jk_new)
 
-                length_random = vals_w.shape[0]-np.size(rows_w_new) # this will constantly reduce lengthRandom
+                length_random = vals_w.shape[0]-np.size(rows_w_new) # this will constantly reduce length_random
 
             # adding all the values along with corresponding row and column indices - Added by Amar
             vals_w_new = np.append(vals_w_new, random_vals) # be careful - we can add to an existing link ?

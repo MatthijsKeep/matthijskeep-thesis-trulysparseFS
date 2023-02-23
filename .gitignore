@@ -144,3 +144,5 @@ old_readme.md
 input_weight_distribution/
 
 pruning/
+
+.vscode/
