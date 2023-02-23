@@ -318,19 +318,32 @@ class SET_MLP:
                 self.layer_importances[i] = np.ones(self.w[i].shape[0], dtype='float32')
                 # print(f"The shape of the hidden layer is: {self.w[i].shape[0]}, which is layer {i}")
 
-        # print(f"The shape of the layer importances is: {self.layer_importances}")
-            
+        # print(f"The shape of the layer importances is: {self.layer_importances}")          
 
-    def _update_layer_importances(self, layer):
+    def _update_layer_importances(self):
 
         # Update the importances of the input layer
         # TODO: FIX
-        self.layer_importances[1] += self.get_core_input_connections()
-
-        # Update the importance of the output layer
-        # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer
-        self.layer_importances[layer] += importance    
+        start_time = time.time()
+        bal = 0.75
+        temp = np.array(self.input_sum.copy()).reshape(-1)
+        print(f"The shapes I add together are {self.layer_importances[1].shape} and {temp.shape}")
+        print(f"The left side of the equation has mean {(self.layer_importances[1] * bal).mean()}")
+        # print(np.squeeze(self.input_sum))
+        print(f"The right side of the equation has mean {(temp * (1 - bal)).mean()}")
+        # TODO: Determine balancing parameter
         
+        self.layer_importances[1] = self.layer_importances[1] * bal + temp * (1 - bal)
+        print(f"The shape of the input layer importances is: {self.layer_importances[1].shape}")
+        print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
+        print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
+        print(f"The mean neuron importance is: {self.layer_importances[1].mean()}")
+        # print("test")
+        # Update the importance of the output layer
+        # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer  
+        # Print the runtime and round to 3 decimals 
+        print(f"Updating the layer importances took {round(time.time() - start_time, 5)} seconds")
+
     def _feed_forward(self, x, drop=False):
         """
         Execute a forward feed through the network.
@@ -450,23 +463,32 @@ class SET_MLP:
         self.input_layer_connections.append(self.get_core_input_connections())
         np.savez_compressed(self.save_filename + "_input_connections.npz",
                             inputLayerConnections=self.input_layer_connections)
+        
+        # 1-d sum of the absolute values of the input weights
+
 
         maximum_accuracy = 0
         metrics = np.zeros((epochs, 4))
 
         for i in range(epochs):
             # Shuffle the data
-            if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % 50 == 0:
+            self.input_weights = self.w[1].copy()
+            _, self.input_sum = select_input_neurons(self.input_weights, args.K)
+            # print(f"The shape of the input layer weights is: {self.input_sum.shape}")
+            if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % 50 == 0 or i == epochs:
                 start_time = time.time()
                 print("In eval loop")
                 # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
-                print(self.get_core_input_connections().shape)
-                print(set_mlp.w[1].copy().shape)
-                print(np.abs(set_mlp.w[1].copy()).sum(axis=1).shape) 
+                # print(self.get_core_input_connections().shape)
+                # print(set_mlp.w[1].copy().shape)
+                # print(self.input_sum.shape) 
                 # selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
                 # print(importances)
-
-                importances_for_eval = pd.DataFrame(np.abs(set_mlp.w[1].copy()).sum(axis=1)).to_csv(header=False, index=False)
+                print("Now saving the importances!")
+                print("==================================")
+                importances_for_eval = self.input_sum.copy()
+                print(importances_for_eval.shape)
+                importances_for_eval = pd.DataFrame(importances_for_eval).to_csv(header=False, index=False)
 
                 importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
                 if not os.path.exists(os.path.dirname(importances_path)):
@@ -475,7 +497,8 @@ class SET_MLP:
                 with open(importances_path, 'w') as f:
                     f.write(importances_for_eval)
 
-                print(f"The choosing and logging  of the {args.K} most important weights took {time.time() - start_time} seconds before the {i} epoch")
+                # Round the time to 5 decimals
+                print(f"Choosing the features before epoch {i} took {round(time.time() - start_time, 5)} seconds")
 
             seed = np.arange(x.shape[0])
             np.random.shuffle(seed)
@@ -499,6 +522,12 @@ class SET_MLP:
 
             if self.monitor:
                 self.monitor.stop_monitor()
+            
+            print("Updating layer importances...")
+            print("====================================")
+            self._update_layer_importances()
+            # print(self.layer_importances[1])
+
 
             print("\nSET-MLP Epoch ", i)
             print("Training time: ", t2 - t1)
@@ -540,10 +569,15 @@ class SET_MLP:
             if self.save_filename != "" and self.monitor:
                 with open(self.save_filename + "_monitor.json", 'w') as file:
                     file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
-
+        # print(self.get_core_input_connections())
         return metrics
 
     def get_core_input_connections(self):
+        """
+        Returns the number of connections for each input neuron
+
+        :return: an array of size equal to the number of input neurons
+        """
         values = np.sort(self.w[1].data)
         first_zero_pos = find_first_pos(values, 0)
         last_zero_pos = find_last_pos(values, 0)
@@ -610,19 +644,13 @@ class SET_MLP:
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
         # Every 50 epochs, save a plot of the distribution of the sum of weights of the input layer
         if epoch % 50 == 0:
-            sum_incoming_weights = np.abs(self.w[1]).sum(axis=1)
-            plt.hist(sum_incoming_weights, bins=100)
-            plt.title(f"Distribution of the sum of weights of the input layer in epoch {str(epoch)}")
-            # save in a folder called "input_weight_distribution"
-            plt.savefig(f"input_weight_distribution/epoch_{str(epoch)}.png")
-            plt.close()
-
+            self._plot_input_distribution(epoch, self.input_sum.copy())
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
             t_ev_1 = datetime.datetime.now()
-            print(i) # layer number
-            print(self.w[i].copy().get_shape()) # shape of the layer
+            # print(i) # layer number
+            # print(self.w[i].copy().get_shape()) # shape of the layer
 
             # Importance Pruning (on the hidden layer(s)), currenly OFF in my implementation
             if self.importance_pruning and epoch % 10 == 0 and epoch > 100:
@@ -648,15 +676,16 @@ class SET_MLP:
                 self.pdw[i] = pdw.tocsr()
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 10 == 0 and epoch > 100 and i == 1:
+            if self.input_pruning and epoch % 10 == 0 and epoch > 1 and i == 1:
                 print("Input neuron pruning")
                 # time 
                 start_input_pruning = datetime.datetime.now()
                 # print(f"The shape of the layer is {self.w[i].shape}") # (input, nhidden)
-                sum_incoming_weights = np.abs(self.w[i].copy()).sum(axis=1)
-                print(sum_incoming_weights.shape) # (input, 1))
-                # print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, nhidden))
-                t = np.percentile(sum_incoming_weights, 20, axis=0)
+                sum_incoming_weights = np.array(self.input_sum.copy())
+                print(sum_incoming_weights.shape) # (1, input))
+                print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, input))
+                # get 20th percentile from (1, input)
+                t = np.percentile(sum_incoming_weights, 20)
                 print(t)
                 sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
                 # print(sum_incoming_weights)
@@ -777,6 +806,15 @@ class SET_MLP:
             t_ev_2 = datetime.datetime.now()
             print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
             self.evolution_time += (t_ev_2 - t_ev_1).seconds
+
+    def _plot_input_distribution(self, epoch, values):
+        plot_time_start = time.time()
+        plt.hist(values, bins=100)
+        plt.title(f"Distribution of the sum of weights of the input layer in epoch {str(epoch)}")
+        # save in a folder called "input_weight_distribution"
+        plt.savefig(f"input_weight_distribution/epoch_{str(epoch)}.png")
+        plt.close()
+        print(f"Plotting the input weight distribution took {time.time() - plot_time_start} seconds.")
 
     def predict(self, x_test, y_test, batch_size=100):
         """
