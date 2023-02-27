@@ -329,7 +329,7 @@ class SET_MLP:
         # Update the importances of the input layer
         # TODO: FIX
         start_time = time.time()
-        bal = 0.75
+        gamma = 0.75
         temp = np.array(self.input_sum.copy()).reshape(-1)
         # print(f"The shapes I add together are {self.layer_importances[1].shape} and {temp.shape}")
         # print(f"The left side of the equation has mean {(self.layer_importances[1] * bal).mean()}")
@@ -337,7 +337,7 @@ class SET_MLP:
         # print(f"The right side of the equation has mean {(temp * (1 - bal)).mean()}")
         # TODO: Determine balancing parameter
         
-        self.layer_importances[1] = self.layer_importances[1] * bal + temp * (1 - bal)
+        self.layer_importances[1] = self.layer_importances[1] * gamma + temp * (1 - gamma)
         # print(f"The shape of the input layer importances is: {self.layer_importances[1].shape}")
         # print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
         # print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
