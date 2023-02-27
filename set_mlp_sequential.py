@@ -343,8 +343,7 @@ class SET_MLP:
         # print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
         # print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
         # print(f"The mean neuron importance is: {self.layer_importances[1].mean()}")
-        # print("test")
-        # Update the importance of the output layer
+        # Update the importance of the output layer?
         # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer  
         # Print the runtime and round to 3 decimals 
         print(f"Updating the layer importances took {round(time.time() - start_time, 5)} seconds")
@@ -517,6 +516,7 @@ class SET_MLP:
             t1 = datetime.datetime.now()
 
             for j in range(x.shape[0] // batch_size):
+                # TODO: add topology update here 
                 k = j * batch_size
                 l = (j + 1) * batch_size
                 z, a, masks = self._feed_forward(x_[k:l], True)
@@ -553,9 +553,10 @@ class SET_MLP:
                 metrics[i, 2] = accuracy_train
                 metrics[i, 3] = accuracy_test
 
-                print(f"Testing time: {t4 - t3}; \n Loss test: {loss_test}; \n"
-                                 f"Accuracy test: {accuracy_test}; \n"
-                                 f"Maximum accuracy val: {maximum_accuracy} \n")
+                print(f"Testing time: {t4 - t3}; \n"
+                      f"Loss test: {loss_test}; \n"
+                      f"Accuracy test: {accuracy_test}; \n"
+                      f"Maximum accuracy val: {maximum_accuracy} \n")
                 self.testing_time += (t4 - t3).seconds
 
 
@@ -658,13 +659,13 @@ class SET_MLP:
 
             # Importance Pruning (on the hidden layer(s)), currenly OFF in my implementation
             if self.importance_pruning and epoch % 10 == 0 and epoch > 100:
+                # TODO: ship this to a separate function, and call it from here
                 print("Importance Pruning")
                 # print(self.w[i].shape) # (input, nhidden)
                 sum_incoming_weights = np.abs(self.w[i]).sum(axis=0)
                 # print(sum_incoming_weights.shape) # (1, nhidden))
 
                 t = np.percentile(sum_incoming_weights, 20, axis=1)
-                # print(t)
                 sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
                 # print(sum_incoming_weights)
                 ids = np.argwhere(sum_incoming_weights == 0)
@@ -681,6 +682,7 @@ class SET_MLP:
 
             # Input neuron pruning (on the input layer)
             if self.input_pruning and epoch % 5 == 0 and epoch > 5 and i == 1:
+                # TODO: ship into a function and call it where necessary
                 print("Input neuron pruning")
                 print("=====================================")
                 zerow_before = np.count_nonzero(self.input_sum == 0)
