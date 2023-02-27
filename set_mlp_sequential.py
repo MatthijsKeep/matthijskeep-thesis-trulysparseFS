@@ -266,6 +266,7 @@ class SET_MLP:
         self.monitor = None
         self.importance_pruning = False
         self.input_pruning = True
+        self.lamda = lamda
 
         self.training_time = 0
         self.testing_time = 0
@@ -329,7 +330,7 @@ class SET_MLP:
         # Update the importances of the input layer
         # TODO: FIX
         start_time = time.time()
-        gamma = 0.75
+        lamda = self.lamda
         temp = np.array(self.input_sum.copy()).reshape(-1)
         # print(f"The shapes I add together are {self.layer_importances[1].shape} and {temp.shape}")
         # print(f"The left side of the equation has mean {(self.layer_importances[1] * bal).mean()}")
@@ -337,7 +338,7 @@ class SET_MLP:
         # print(f"The right side of the equation has mean {(temp * (1 - bal)).mean()}")
         # TODO: Determine balancing parameter
         
-        self.layer_importances[1] = self.layer_importances[1] * gamma + temp * (1 - gamma)
+        self.layer_importances[1] = self.layer_importances[1] * lamda + temp * (1 - lamda) # NOTE (Matthijs): Only update input layer for now
         # print(f"The shape of the input layer importances is: {self.layer_importances[1].shape}")
         # print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
         # print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
@@ -531,7 +532,6 @@ class SET_MLP:
             print("====================================")
             self._update_layer_importances()
             # print(self.layer_importances[1])
-
 
             print("\nSET-MLP Epoch ", i)
             print("Training time: ", t2 - t1)
@@ -941,6 +941,7 @@ if __name__ == "__main__":
     batch_size = 128
     dropout_rate = 0.3
     learning_rate = args.lr
+    lamda = args.lamda
     momentum = args.momentum
     weight_decay = 0.0002
     allrelu_slope = args.allrelu_slope
