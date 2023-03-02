@@ -264,7 +264,7 @@ class SET_MLP:
         self.save_filename = ""
         self.input_layer_connections = []
         self.monitor = None
-        self.importance_pruning = False
+        self.importance_pruning = True
         self.input_pruning = True
         self.lamda = lamda
 
@@ -488,8 +488,8 @@ class SET_MLP:
                 # print(self.input_sum.shape) 
                 # selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
                 # print(importances)
-                print("Now saving the importances!")
-                print("==================================")
+                # print("Now saving the importances!")
+                # print("==================================")
                 importances_for_eval = self.input_sum.copy()
                 # print(importances_for_eval.shape)
                 importances_for_eval = pd.DataFrame(importances_for_eval).to_csv(header=False, index=False)
@@ -502,7 +502,7 @@ class SET_MLP:
                     f.write(importances_for_eval)
 
                 # Round the time to 5 decimals
-                print(f"Choosing the features before epoch {i} took {round(time.time() - start_time, 5)} seconds")
+                # print(f"Choosing the features before epoch {i} took {round(time.time() - start_time, 5)} seconds")
 
             seed = np.arange(x.shape[0])
             np.random.shuffle(seed)
@@ -528,8 +528,8 @@ class SET_MLP:
             if self.monitor:
                 self.monitor.stop_monitor()
             
-            print("Updating layer importances...")
-            print("====================================")
+            # print("Updating layer importances...")
+            # print("====================================")
             self._update_layer_importances()
             # print(self.layer_importances[1])
 
@@ -539,7 +539,7 @@ class SET_MLP:
 
             # test model performance on the test data at each epoch
             # this part is useful to understand model performance and can be commented for production settings
-            if testing:
+            if testing and i % 10 == 0:
                 t3 = datetime.datetime.now()
                 accuracy_test, activations_test = self.predict(x_test, y_test)
                 accuracy_train, activations_train = self.predict(x, y_true)
@@ -681,18 +681,19 @@ class SET_MLP:
                 self.pdw[i] = pdw.tocsr()
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 5 == 0 and epoch > 5 and i == 1:
+            if self.input_pruning and epoch % 25 == 0 and epoch > 100 and i == 1:
                 # TODO: ship into a function and call it where necessary
-                print("Input neuron pruning")
-                print("=====================================")
+                # print("Input neuron pruning")
+                # print("=====================================")
                 zerow_before = np.count_nonzero(self.input_sum == 0)
                 # TODO: Add different amount of min features for madelon dataset for instance
                 # print(self.input_sum.shape[0] - (args.K * 2))
                 # print(self.input_sum.shape)
 
                 if zerow_before > self.input_sum.shape[0] - (args.K * 2):
-                    print("WARNING: No more neurons to prune")
+                    print(f"WARNING: No more neurons to prune, since {zerow_before} > {self.input_sum.shape[0] - (args.K * 2)}")
                     self.input_pruning = False
+                    time.sleep(10)
                     continue
                 zerow_pct = zerow_before / self.input_sum.shape[0] * 100
                 print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
@@ -775,8 +776,8 @@ class SET_MLP:
             smallest_positive = values[int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
 
             # remove the weights (W) closest to zero and modify PD as well 
-            print("Starting to remove weights")
-            print("=====================================")
+            # print("Starting to remove weights")
+            # print("=====================================")
             vals_w_new = vals_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
             # print(f"The shape of the new vals_w is {vals_w_new.shape}")
             # print(vals_w_new)
@@ -926,7 +927,7 @@ if __name__ == "__main__":
     # print("device", device)
     # print("*******************************************************")
     sum_training_time = 0
-    runs = 1
+    runs = args.runs
 
     # load data
     no_training_samples = 50000  # max 60000 for Fashion MNIST
@@ -952,12 +953,15 @@ if __name__ == "__main__":
     # make a list of the layers
 
     for i in range(runs):
-
+        print(args.data)
         if args.data == 'FashionMnist':
             x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
         elif args.data == 'mnist':
             x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
+        elif args.data == 'madelon':
+            x_train, y_train, x_test, y_test = load_madelon_data()
         np.random.seed(i)
+        
 
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
 
@@ -1054,6 +1058,7 @@ if __name__ == "__main__":
         print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
         print(f"The testing of the {args.K} most important weights took {time.time() - start_time} seconds")
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
+        print_and_log(accuracy_topk)
 
         # plot the features
         if args.plot_features:
