@@ -447,7 +447,7 @@ class SET_MLP:
             if zerow_before > self.input_sum.shape[0] - (args.K * 2):
                 print(f"WARNING: No more neurons to prune, since {zerow_before} > {self.input_sum.shape[0] - (args.K * 2)}")
                 self.input_pruning = False
-                time.sleep(10)
+                # time.sleep(10) # temporary
             zerow_pct = zerow_before / self.input_sum.shape[0] * 100
             print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
                     which is {zerow_pct}% of the total neurons.")
@@ -463,7 +463,8 @@ class SET_MLP:
             # print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, input))
             # get 20th percentile from (1, input)
             curr_percentile = 20 + ((epoch/no_training_epochs) * 60)
-            t = np.percentile(sum_incoming_weights, 20)
+            print(f"Current percentile is {curr_percentile}")
+            t = np.percentile(sum_incoming_weights, curr_percentile)
             if t == 0:
                 # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
                 # It should be a function of epoch/n_epochs
@@ -517,6 +518,8 @@ class SET_MLP:
         """
         if x.shape[0] != y_true.shape[0]:
             raise ValueError("Length of x and y arrays don't match")
+        self.batch_amount = x.shape[0] // batch_size
+        print(f"The number of batches is: {self.batch_amount}")
 
         self.monitor = Monitor(save_filename=save_filename) if monitor else None
 
@@ -580,7 +583,8 @@ class SET_MLP:
             t1 = datetime.datetime.now()
 
             for j in range(x.shape[0] // batch_size):
-                # TODO: add topology update here 
+                # TODO: add topology update here
+                # print(j)
                 k = j * batch_size
                 l = (j + 1) * batch_size
                 z, a, masks = self._feed_forward(x_[k:l], True)
@@ -592,9 +596,13 @@ class SET_MLP:
                 if i < epochs - 1:  # do not change connectivity pattern after the last epoch
                     # self.weights_evolution_I() # this implementation is more didactic, but slow.
                     self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
+            
+            # Input neuron pruning (on the input layer) # and epoch % 25 == 0 and epoch > 100
+            if self.input_pruning and i > 3 :
+                self._input_pruning(epoch=i, i=1)
                 t6 = datetime.datetime.now()
                 # print("Weights evolution time ", t6 - t5)
-
+            
             t2 = datetime.datetime.now()
 
             if self.monitor:
@@ -719,7 +727,7 @@ class SET_MLP:
             # print(i) # layer number
             # print(self.w[i].copy().get_shape()) # shape of the layer
 
-            # Importance Pruning (on the hidden layer(s)), currenly OFF in my implementation
+            # Importance Pruning (on the hidden layer(s)), currenly OFF in my implementation.
             if self.importance_pruning and epoch % 10 == 0 and epoch > 100:
                 # TODO: ship this to a separate function, and call it from here
                 print("Importance Pruning")
@@ -741,10 +749,6 @@ class SET_MLP:
 
                 self.w[i] = weights.tocsr()
                 self.pdw[i] = pdw.tocsr()
-
-            # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 25 == 0 and epoch > 100 and i == 1:
-                self._input_pruning(epoch=epoch, i=i)
 
             # converting to COO form - Added by Amar
             wcoo = self.w[i].tocoo()
@@ -782,7 +786,7 @@ class SET_MLP:
             self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)), (self.dimensions[i - 1], self.dimensions[i])).tocsr()
 
             if i == 1:
-                print("Now saving the input layer connections")
+                # print("Now saving the input layer connections")
                 self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
                                                                (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
                 np.savez_compressed(
@@ -861,7 +865,7 @@ class SET_MLP:
         # save in a folder called "input_weight_distribution"
         plt.savefig(f"input_weight_distribution/epoch_{str(epoch)}.png")
         plt.close()
-        print(f"Plotting the input weight distribution took {time.time() - plot_time_start} seconds.")
+        # print(f"Plotting the input weight distribution took {time.time() - plot_time_start} seconds.")
 
     def predict(self, x_test, y_test, batch_size=100):
         """
