@@ -346,7 +346,7 @@ class SET_MLP:
         # Update the importance of the output layer?
         # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer  
         # Print the runtime and round to 3 decimals 
-        print(f"Updating the layer importances took {round(time.time() - start_time, 5)} seconds")
+        # print(f"Updating the layer importances took {round(time.time() - start_time, 5)} seconds")
 
     def _feed_forward(self, x, drop=False):
         """
@@ -505,7 +505,6 @@ class SET_MLP:
 
             print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
 
-
     def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, learning_rate=1e-3, momentum=0.9,
             weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False):
         """
@@ -588,15 +587,18 @@ class SET_MLP:
 
                 self._back_prop(z, a, masks,  y_[k:l])
 
+                t5 = datetime.datetime.now()
+                self._update_layer_importances()
+                if i < epochs - 1:  # do not change connectivity pattern after the last epoch
+                    # self.weights_evolution_I() # this implementation is more didactic, but slow.
+                    self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
+                t6 = datetime.datetime.now()
+                # print("Weights evolution time ", t6 - t5)
+
             t2 = datetime.datetime.now()
 
             if self.monitor:
                 self.monitor.stop_monitor()
-            
-            # print("Updating layer importances...")
-            # print("====================================")
-            self._update_layer_importances()
-            # print(self.layer_importances[1])
 
             print("\nSET-MLP Epoch ", i)
             print("Training time: ", t2 - t1)
@@ -625,12 +627,7 @@ class SET_MLP:
                 self.testing_time += (t4 - t3).seconds
 
 
-            t5 = datetime.datetime.now()
-            if i < epochs - 1:  # do not change connectivity pattern after the last epoch
-                # self.weights_evolution_I() # this implementation is more didactic, but slow.
-                self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
-            t6 = datetime.datetime.now()
-            print("Weights evolution time ", t6 - t5)
+
 
             # save performance metrics values in a file
             if self.save_filename != "":
@@ -854,7 +851,7 @@ class SET_MLP:
             # print("Number of non zeros in W and PD matrix after evolution in layer",i,[(self.w[i].data.shape[0]), (self.pdw[i].data.shape[0])])
 
             t_ev_2 = datetime.datetime.now()
-            print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
+            # print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
             self.evolution_time += (t_ev_2 - t_ev_1).seconds
 
     def _plot_input_distribution(self, epoch, values):
