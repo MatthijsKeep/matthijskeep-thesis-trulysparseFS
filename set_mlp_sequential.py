@@ -1127,7 +1127,7 @@ if __name__ == "__main__":
 
         # time the tesitng
         start_time = time.time()
-        accuracy_topk = svm_test(x_train_new, y_train, x_test_new, y_test)
+        accuracy_topk = round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
         print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
         print(f"The testing of the {args.K} most important weights took {time.time() - start_time} seconds")
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
