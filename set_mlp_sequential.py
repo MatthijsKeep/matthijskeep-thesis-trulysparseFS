@@ -570,7 +570,7 @@ class SET_MLP:
         self.input_layer_connections.append(self.get_core_input_connections())
         np.savez_compressed(self.save_filename + "_input_connections.npz",
                             inputLayerConnections=self.input_layer_connections)
-        
+
         maximum_accuracy = 0
         metrics = np.zeros((epochs, 4))
 
@@ -622,7 +622,7 @@ class SET_MLP:
             t1 = datetime.datetime.now()
             t1_time = round(time.time(), 3)
 
-            for j in range(x.shape[0] // batch_size):
+            for j in range(x.shape[0] // batch_size): # batch 
                 # TODO: add topology update here
                 # print(j)
                 j_time_1 = round(time.time(), 3)
@@ -631,7 +631,6 @@ class SET_MLP:
                 z, a, masks = self._feed_forward(x_[k:l], True)
                 j_time_2 = round(time.time(), 3)
                 feed_forward_time += (j_time_2 - j_time_1)
-
 
                 self._back_prop(z, a, masks,  y_[k:l])
                 j_time_3 = round(time.time(), 3)
@@ -643,19 +642,19 @@ class SET_MLP:
                 j_time_4 = round(time.time(), 3)
                 update_importance_time += (j_time_4 - j_time_3)
 
-
-                if i < epochs - 1:  # do not change connectivity pattern after the last epoch
+                if args.update_batch and i < epochs - 1:
                     # self.weights_evolution_I() # this implementation is more didactic, but slow.
                     self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
                 j_time_5 = round(time.time(), 3)
                 weight_evol_time += (j_time_5 - j_time_4)
 
-
+            if args.update_batch == False and i < epochs - 1:
+                    self.weights_evolution_II(i)
             if self.input_pruning and i > 3 :
                 self._input_pruning(epoch=i, i=1)
                 t6 = datetime.datetime.now()
             weight_evol_time_per_batch += (j_time_5 - j_time_4)/self.batch_amount
-            
+
             print(f"Per batch, it takes {round(time.time() - t1_time, 3)/self.batch_amount} seconds")
             print(f"Feed forward time: {round(feed_forward_time, 3)} seconds")
             print(f"Back prop time: {round(back_prop_time, 3)} seconds")
@@ -664,11 +663,7 @@ class SET_MLP:
 
             # time.sleep(10)
             t2 = datetime.datetime.now()
-           
 
-            # Input neuron pruning (on the input layer) # and epoch % 25 == 0 and epoch > 100
-
-                # print("Weights evolution time ", t6 - t5)
 
             if self.monitor:
                 self.monitor.stop_monitor()
