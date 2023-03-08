@@ -166,16 +166,7 @@ def select_input_neurons(weights, k):
     """
 
     # get the sum of the absolute values of the weights for each neuron
-    # print(weights.shape) # (784, )
-    # print(weights)
-    # print(weights)
     sum_weights = np.abs(weights).sum(axis=1)
-    # sort the neurons by the sum of the absolute values of the weights
-    # print(sum_weights)
-    # print(f"The shape of the sum of the weights is: {sum_weights.shape}") # (784, 1)
-    # get the indices of the k most important neurons
-    # print(k)
-    # print the index of the highest weight
     print(f"The input neuron with the highest weight is: {np.argmax(sum_weights)}")
     important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:k]
     # print(important_neurons_idx)
@@ -479,16 +470,17 @@ class SET_MLP:
             ids = np.argwhere(sum_incoming_weights == 0)
             print("ids", ids.shape)
             # overlay the ids on a 28*28 matrix and set the values to 0
-            matrix2828 = np.ones((28,28))
-            matrix2828 = matrix2828.flatten()
-            matrix2828[ids] = 0
-            matrix2828 = matrix2828.reshape((28,28))
-            # plot the matrix with the epoch number as title without interruping the training
-            plt.imshow(matrix2828, cmap='gray')
-            plt.title(f"Epoch {epoch}")
-            # save into the pruning directory
-            plt.savefig(f"pruning/{epoch}.png")
-            plt.close()
+            if args.plotting and (args.data == 'MNIST' | args.data == 'FashionMnist'):
+                matrix2828 = np.ones((28,28))
+                matrix2828 = matrix2828.flatten()
+                matrix2828[ids] = 0
+                matrix2828 = matrix2828.reshape((28,28))
+                # plot the matrix with the epoch number as title without interruping the training
+                plt.imshow(matrix2828, cmap='gray')
+                plt.title(f"Epoch {epoch}")
+                # save into the pruning directory
+                plt.savefig(f"pruning/{epoch}.png")
+                plt.close()
 
             # print(matrix2828.shape)
             # print(matrix2828)
@@ -529,9 +521,10 @@ class SET_MLP:
         self.zeta = zeta
         self.dropout_rate = dropoutrate
         self.save_filename = save_filename
-        self.input_layer_connections.append(self.get_core_input_connections())
-        np.savez_compressed(self.save_filename + "_input_connections.npz",
-                            inputLayerConnections=self.input_layer_connections)
+        if args.plotting:
+            self.input_layer_connections.append(self.get_core_input_connections())
+            np.savez_compressed(self.save_filename + "_input_connections.npz",
+                                inputLayerConnections=self.input_layer_connections)
         
         # 1-d sum of the absolute values of the input weights
 
@@ -547,16 +540,7 @@ class SET_MLP:
             if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % 50 == 0 or i == epochs:
                 start_time = time.time()
                 print("In eval loop")
-                # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
-                # print(self.get_core_input_connections().shape)
-                # print(set_mlp.w[1].copy().shape)
-                # print(self.input_sum.shape) 
-                # selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
-                # print(importances)
-                # print("Now saving the importances!")
-                # print("==================================")
                 importances_for_eval = self.input_sum.copy()
-                # print(importances_for_eval.shape)
                 importances_for_eval = pd.DataFrame(importances_for_eval).to_csv(header=False, index=False)
 
                 importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
@@ -581,7 +565,7 @@ class SET_MLP:
             t1 = datetime.datetime.now()
 
             for j in range(x.shape[0] // batch_size):
-                # TODO: add topology update here 
+                # TODO: add topology update here
                 k = j * batch_size
                 l = (j + 1) * batch_size
                 z, a, masks = self._feed_forward(x_[k:l], True)
@@ -713,7 +697,7 @@ class SET_MLP:
         # this represents the core of the SET procedure. It removes the weights closest to zero in each layer and add new random weights
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
         # Every 50 epochs, save a plot of the distribution of the sum of weights of the input layer
-        if epoch % 50 == 0:
+        if epoch % 50 == 0 and args.plotting:
             self._plot_input_distribution(epoch, self.input_sum.copy())
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
@@ -784,7 +768,7 @@ class SET_MLP:
 
             self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)), (self.dimensions[i - 1], self.dimensions[i])).tocsr()
 
-            if i == 1:
+            if i == 1 and args.plotting:
                 print("Now saving the input layer connections")
                 self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
                                                                (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
@@ -820,8 +804,6 @@ class SET_MLP:
                     # make neuron importance sum to 1
                     neuron_importance_i = neuron_importance_i / np.sum(neuron_importance_i)
                     neuron_importance_j = neuron_importance_j / np.sum(neuron_importance_j)
-
-                    #TODO : Also add a completely random element to keep exploring?
 
                     ik = np.random.choice(self.dimensions[i - 1], size=length_random, p=neuron_importance_i).astype('int32')
                     # also bias the neurons it connects to towards the most important neurons
@@ -902,6 +884,7 @@ if __name__ == "__main__":
     # print("device", device)
     # print("*******************************************************")
     sum_training_time = 0
+    accuracies = []
     runs = args.runs
 
     # load data
@@ -974,6 +957,7 @@ if __name__ == "__main__":
         print("\nTotal evolution time: ", set_mlp.evolution_time)
         sum_training_time += step_time
 
+
         # test SET-MLP
         # select the 50 most important connections in the input layer
         # time the choosing of the weigths
@@ -982,7 +966,7 @@ if __name__ == "__main__":
         # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
         selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
         # print(set_mlp.w[1])
-        print(f"The choosing of the {args.K} most important weights took {time.time() - start_time} seconds")
+        # print(f"The choosing of the {args.K} most important weights took {time.time() - start_time} seconds")
         
         # Print how many neurons in the input layer have a connection
         # print(f"The number of neurons in the input layer with a connection is: {np.count_nonzero(set_mlp.w[1].sum(axis=1))}")
@@ -1029,10 +1013,11 @@ if __name__ == "__main__":
 
         # time the tesitng
         start_time = time.time()
-        accuracy_topk = svm_test(x_train_new, y_train, x_test_new, y_test)
+        accuracy_topk = round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
         print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
         print(f"The testing of the {args.K} most important weights took {time.time() - start_time} seconds")
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
+        accuracies.append(accuracy_topk)
         print_and_log(accuracy_topk)
 
         # plot the features
@@ -1041,4 +1026,5 @@ if __name__ == "__main__":
 
         if args.plot_importances:
             plot_importances(importances, args.K)
-    print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds")
+    print(accuracies)
+    print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds, with mean accuracy {round(np.mean(accuracies)*100, 4)}% and std {round(np.std(accuracies)*100, 4)}%")

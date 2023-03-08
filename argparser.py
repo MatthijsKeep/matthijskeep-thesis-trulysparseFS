@@ -44,8 +44,7 @@ def get_parser():
 
     parser.add_argument('--model', type=str, default='MLP', help='For the original, WAST implementation use \'WAST\', which will implement the AE model. For the MLP model, use \'MLP\'')
     parser.add_argument('--feature_search_exp', type=bool, default=False, help='If the code is running for the feature search experiment, set this to True. This will run the testing for different values of K.')
-    parser.add_argument('--plot_features', type=bool, default=False, help='If true. This will plot the features for different values of K.')
-    parser.add_argument('--plot_importances', type=bool, default=False, help='If true. This will plot the neuron importances for different values of K.')
+    parser.add_argument('--plotting', type=bool, default=False, help='If true. This will plot different things.')
     parser.add_argument('--runs', type=int, default=1, help='Number of runs for the feature search experiment.')
     
     return parser
