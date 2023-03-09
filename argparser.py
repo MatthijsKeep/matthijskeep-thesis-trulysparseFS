@@ -40,11 +40,14 @@ def get_parser():
     parser.add_argument('--strength', type=str, default='IMP', 
                 help='The critreia for selecting the informative features. Options: IMP or weight.') 
     parser.add_argument('--hidden_IMP', type=bool, default=False, help='Always False for WAST. The neurons are equally important')
-    parser.add_argument('--update_batch', type=bool, default=True, help='Schedule for topology update')
+    parser.add_argument('--update_batch', type=bool, default=False, help='Schedule for topology update')
+    parser.add_argument('--input_pruning', type=bool, default=False, help='If true, the input layer will be pruned.')
+    parser.add_argument('--importance_pruning', type=bool, default=False, help='If true, the importance pruning will be used.')
 
     parser.add_argument('--model', type=str, default='MLP', help='For the original, WAST implementation use \'WAST\', which will implement the AE model. For the MLP model, use \'MLP\'')
     parser.add_argument('--feature_search_exp', type=bool, default=False, help='If the code is running for the feature search experiment, set this to True. This will run the testing for different values of K.')
     parser.add_argument('--plotting', type=bool, default=False, help='If true. This will plot different things.')
     parser.add_argument('--runs', type=int, default=1, help='Number of runs for the feature search experiment.')
+    
     
     return parser

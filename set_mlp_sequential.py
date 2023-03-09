@@ -106,7 +106,6 @@ def dropout(x, rate):
     keep_mask = noise >= rate
     return x * scale * keep_mask, keep_mask
 
-
 def createSparseWeights_II(epsilon,noRows,noCols):
     # generate an Erdos Renyi sparse weights mask
     weights = lil_matrix((noRows, noCols))
@@ -116,7 +115,6 @@ def createSparseWeights_II(epsilon,noRows,noCols):
           (weights.getnnz()/(noRows * noCols))*100, "% density level")
     weights = weights.tocsr()
     return weights
-
 
 def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
     # He uniform initialization
@@ -142,7 +140,6 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
           (weights.getnnz() / (n_rows * n_cols)) * 100, "% density level")
     weights = weights.tocsr()
     return weights
-
 
 def array_intersect(a, b):
     # this are for array intersection
@@ -193,11 +190,10 @@ def select_input_neurons(weights, k):
     # # print(f"The sum of weights for each neuron is: {sum_weights.flatten()}")
 
     # zip the indices and the sum of the weights
-    important_neurons = np.abs(set_mlp.w[1].copy()).sum(axis=1)
+    important_neurons = np.abs(copy.deepcopy(set_mlp.w[1])).sum(axis=1)
     # print(f"The important neurons are: {important_neurons}")
 
     return important_neurons_idx, important_neurons
-
 
 def setup_logger(args): 
     global logger
@@ -225,9 +221,8 @@ def print_and_log(msg):
     print(msg)
     logger.info(msg)
 
-
 class SET_MLP:
-    def __init__(self, dimensions, activations, epsilon=20, weight_init='neuron_importance'):
+    def __init__(self, dimensions, activations, input_pruning, importance_pruning, epsilon=20, weight_init='neuron_importance'):
         """
         :param dimensions: (tpl/ list) Dimensions of the neural net. (input, hidden layer, output)
         :param activations: (tpl/ list) Activations functions.
@@ -242,6 +237,7 @@ class SET_MLP:
         dimensions =  (3312,     3000,  3000,  3000,  5)
         activations = (          Relu,  Relu,  Relu,  Sigmoid)
         """
+
         self.n_layers = len(dimensions)
         self.loss = None
         self.dropout_rate = 0.  # dropout rate
@@ -255,8 +251,8 @@ class SET_MLP:
         self.save_filename = ""
         self.input_layer_connections = []
         self.monitor = None
-        self.importance_pruning = True
-        self.input_pruning = True
+        self.importance_pruning = importance_pruning
+        self.input_pruning = input_pruning
         self.lamda = lamda
 
         self.training_time = 0
@@ -300,44 +296,36 @@ class SET_MLP:
             if i == 1: # Input layer
                 # print(f"{i} == 1")
                 # print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
-                self.layer_importances[i] = np.zeros(self.w[i].shape[0], dtype='float32')
+                self.layer_importances[i] = np.zeros(copy.deepcopy(self.w[i]).shape[0], dtype='float32')
                 # print(f"The shape of the input layer is: {self.w[i].shape[0]}, which is layer {i}")
             if i == self.n_layers: # Output layer
                 # print(f"{i} == {self.n_layers}")
                 # print(f"The shape of the weight matrix we are looking at is: {self.w[i-1].shape}")
-                self.layer_importances[i] = np.zeros(self.w[i-1].shape[1], dtype='float32')
+                self.layer_importances[i] = np.zeros(copy.deepcopy(self.w[i-1]).shape[1], dtype='float32')
                 # print(f"The shape of the output layer is: {self.w[i-1].shape[1]}, which is layer {i}")
             # for the hidden layers all neurons have the same importance
             if i not in [1, self.n_layers]: # All other layers (hidden layers)
                 # print(f"{i} not in [1, {self.n_layers}]")
                 # print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
-                self.layer_importances[i] = np.ones(self.w[i].shape[0], dtype='float32')
+                self.layer_importances[i] = np.ones(copy.deepcopy(self.w[i]).shape[0], dtype='float32')
                 # print(f"The shape of the hidden layer is: {self.w[i].shape[0]}, which is layer {i}")
 
         # print(f"The shape of the layer importances is: {self.layer_importances}")          
 
     def _update_layer_importances(self):
+        """
+        Update the layer importances for each layer
 
-        # Update the importances of the input layer
-        # TODO: FIX
+        :return: None
+        """
         start_time = time.time()
         lamda = self.lamda
-        temp = np.array(self.input_sum.copy()).reshape(-1)
-        # print(f"The shapes I add together are {self.layer_importances[1].shape} and {temp.shape}")
-        # print(f"The left side of the equation has mean {(self.layer_importances[1] * bal).mean()}")
-        # print(np.squeeze(self.input_sum))
-        # print(f"The right side of the equation has mean {(temp * (1 - bal)).mean()}")
-        # TODO: Determine balancing parameter
+        temp = np.array(copy.deepcopy(self.input_sum)).reshape(-1)
         
         self.layer_importances[1] = self.layer_importances[1] * lamda + temp * (1 - lamda) # NOTE (Matthijs): Only update input layer for now
-        # print(f"The shape of the input layer importances is: {self.layer_importances[1].shape}")
-        # print(f"The lowest neuron importance is: {self.layer_importances[1].min()}, which is neuron {np.argmin(self.layer_importances[1])}")
-        # print(f"The highest neuron importance is: {self.layer_importances[1].max()}, which is neuron {np.argmax(self.layer_importances[1])}")
-        # print(f"The mean neuron importance is: {self.layer_importances[1].mean()}")
-        # Update the importance of the output layer?
-        # NOTE (Matthijs): Not sure if I want to do anything with the importances of the output layer  
-        # Print the runtime and round to 3 decimals 
-        print(f"Updating the layer importances took {round(time.time() - start_time, 5)} seconds")
+        self.layer_importances[self.n_layers] = self.layer_importances[self.n_layers] # NOTE (Matthijs): Output layer, but I don't know how to do this yet
+
+        # print(f"Updating the layer importances took {round(time.time() - start_time, 2)} seconds")
 
     def _feed_forward(self, x, drop=False):
         """
@@ -433,73 +421,98 @@ class SET_MLP:
         self.b[index] += self.pdd[index] - self.weight_decay * self.b[index]
 
     def _input_pruning(self, epoch, i):
-            zerow_before = np.count_nonzero(self.input_sum == 0)
+        zerow_before = np.count_nonzero(self.input_sum == 0)
 
-            if zerow_before > self.input_sum.shape[0] - (args.K * 2):
-                print(f"WARNING: No more neurons to prune, since {zerow_before} > {self.input_sum.shape[0] - (args.K * 2)}")
-                self.input_pruning = False
-                time.sleep(10)
-            zerow_pct = zerow_before / self.input_sum.shape[0] * 100
-            print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
-                    which is {zerow_pct}% of the total neurons.")
+        if zerow_before > self.input_sum.shape[0] - (args.K * 2):
+            print(f"WARNING: No more neurons to prune, since {zerow_before} > {self.input_sum.shape[0] - (args.K * 2)}")
+            self.input_pruning = False
+            # time.sleep(10) 
+        zerow_pct = zerow_before / self.input_sum.shape[0] * 100
+        print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
+                which is {zerow_pct}% of the total neurons.")
 
-            start_input_pruning = datetime.datetime.now()
-            # print(f"The shape of the layer is {self.w[i].shape}") # (input, nhidden)
-            sum_incoming_weights = np.array(self.input_sum.copy())
+        start_input_pruning = datetime.datetime.now()
+
+        sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
+    
+        curr_percentile = 20 + ((epoch/no_training_epochs) * 60)
+        t = np.percentile(sum_incoming_weights, 20)
+        if t == 0:
+            # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
+            # It should be a function of epoch/n_epochs
+            curr_percentile = 20 + ((epoch/no_training_epochs) * 70)
+            t_2 = np.percentile(sum_incoming_weights, curr_percentile)
+            # prune the weights that are lower than 
+            print(f"\n NOTE: t is 0, setting it to t_2 : {t_2}, which prunes the {curr_percentile}th percentile of the weights")
+            t = t_2
+        # print(t)
+        # breakpoint()
+        sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+        # print(sum_incoming_weights)
+        ids = np.argwhere(sum_incoming_weights == 0)
+        # print("ids", ids.shape)
+        # overlay the ids on a 28*28 matrix and set the values to 0
+        if args.plotting and (args.data == 'MNIST' | args.data == 'FashionMnist'):
+            matrix2828 = np.ones((28,28))
+            matrix2828 = matrix2828.flatten()
+            matrix2828[ids] = 0
+            matrix2828 = matrix2828.reshape((28,28))
+            # plot the matrix with the epoch number as title without interruping the training
+            plt.imshow(matrix2828, cmap='gray')
+            plt.title(f"Epoch {epoch}")
+            # save into the pruning directory
+            plt.savefig(f"pruning/{epoch}.png")
+            plt.close()
+
+        # print(matrix2828.shape)
+        # print(matrix2828)
+        # print(ids)
+
+        weights = self.w[i].tolil()
+        pdw = self.pdw[i].tolil()
+
+        weights[ids[:,0], :] = 0
+        pdw[ids[:,0], :] = 0
+
+        self.w[i] = weights.tocsr()
+        self.pdw[i] = pdw.tocsr()
+
+        print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
+
+    def _importance_pruning(self, epoch, i):
+        """
+        Function to perform pruning on the weights of the hidden layer.
+        Parameters:
+        :param epoch: (int) Current epoch
+        :param i: (int) Current layer
+
+        Returns:
+        None
+        """
+
+        sum_incoming_weights = np.abs(copy.deepcopy(self.w[i])).sum(axis=0)
+
+        t = np.percentile(sum_incoming_weights, self.zeta, axis=1)
+        sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+        
+        # print(sum_incoming_weights)
+        ids = np.argwhere(sum_incoming_weights == 0)
+        # print("ids", ids.shape)
+
+        weights = self.w[i].tolil()
+        pdw = self.pdw[i].tolil()
+
+        weights[:, ids[:,1]] = 0
+        pdw[:, ids[:,1]] = 0
+
+        self.w[i] = weights.tocsr()
+        self.pdw[i] = pdw.tocsr()
+
+
+    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, run, metrics, learning_rate=1e-3, momentum=0.9,
+            weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False, 
             
-            
-            # print(f"The lowest value in the neuron weights is: {lowest_in_sum}")
-            # Calculating the sum of the incoming weights for each node in the hidden layer.
-            # print(sum_incoming_weights.shape) # (1, input))
-            # print(f"The shape of the sum of the weights is {sum_incoming_weights.shape}") # (1, input))
-            # get 20th percentile from (1, input)
-            curr_percentile = 20 + ((epoch/no_training_epochs) * 60)
-            t = np.percentile(sum_incoming_weights, 20)
-            if t == 0:
-                # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
-                # It should be a function of epoch/n_epochs
-                curr_percentile = 20 + ((epoch/no_training_epochs) * 70)
-                t_2 = np.percentile(sum_incoming_weights, curr_percentile)
-                # prune the weights that are lower than 
-                print(f"\n NOTE: t is 0, setting it to t_2 : {t_2}, which prunes the {curr_percentile}th percentile of the weights")
-                t = t_2
-            # print(t)
-            # breakpoint()
-            sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
-            # print(sum_incoming_weights)
-            ids = np.argwhere(sum_incoming_weights == 0)
-            print("ids", ids.shape)
-            # overlay the ids on a 28*28 matrix and set the values to 0
-            if args.plotting and (args.data == 'MNIST' | args.data == 'FashionMnist'):
-                matrix2828 = np.ones((28,28))
-                matrix2828 = matrix2828.flatten()
-                matrix2828[ids] = 0
-                matrix2828 = matrix2828.reshape((28,28))
-                # plot the matrix with the epoch number as title without interruping the training
-                plt.imshow(matrix2828, cmap='gray')
-                plt.title(f"Epoch {epoch}")
-                # save into the pruning directory
-                plt.savefig(f"pruning/{epoch}.png")
-                plt.close()
-
-            # print(matrix2828.shape)
-            # print(matrix2828)
-            # print(ids)
-
-            weights = self.w[i].tolil()
-            pdw = self.pdw[i].tolil()
-
-            weights[ids[:,0], :] = 0
-            pdw[ids[:,0], :] = 0
-
-            self.w[i] = weights.tocsr()
-            self.pdw[i] = pdw.tocsr()
-
-            print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
-
-
-    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, learning_rate=1e-3, momentum=0.9,
-            weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False):
+            ):
         """
         Train the network.
 
@@ -525,22 +538,20 @@ class SET_MLP:
             self.input_layer_connections.append(self.get_core_input_connections())
             np.savez_compressed(self.save_filename + "_input_connections.npz",
                                 inputLayerConnections=self.input_layer_connections)
-        
+
         # 1-d sum of the absolute values of the input weights
 
-
         maximum_accuracy = 0
-        metrics = np.zeros((epochs, 4))
 
         for i in range(epochs):
             # Shuffle the data
-            self.input_weights = self.w[1].copy()
+            self.input_weights = copy.deepcopy(self.w[1])
             _, self.input_sum = select_input_neurons(self.input_weights, args.K)
             # print(f"The shape of the input layer weights is: {self.input_sum.shape}")
             if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % 50 == 0 or i == epochs:
                 start_time = time.time()
                 print("In eval loop")
-                importances_for_eval = self.input_sum.copy()
+                importances_for_eval = copy.deepcopy(self.input_sum)
                 importances_for_eval = pd.DataFrame(importances_for_eval).to_csv(header=False, index=False)
 
                 importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
@@ -565,21 +576,34 @@ class SET_MLP:
             t1 = datetime.datetime.now()
 
             for j in range(x.shape[0] // batch_size):
-                # TODO: add topology update here
                 k = j * batch_size
                 l = (j + 1) * batch_size
-                z, a, masks = self._feed_forward(x_[k:l], True)
+                if args.update_batch == True:
+                    # print(args.update_batch) 
+                    z, a, masks = self._feed_forward(x_[k:l], True)
 
-                self._back_prop(z, a, masks,  y_[k:l])
+                    self._back_prop(z, a, masks,  y_[k:l])
+
+                    self._update_layer_importances()
+
+                    if i < epochs - 1:
+                    # self.weights_evolution_I() # this implementation is more didactic, but slow.
+                        self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
+                else: 
+                    # print(args.update_batch) 
+                    z, a, masks = self._feed_forward(x_[k:l], True)
+
+                    self._back_prop(z, a, masks,  y_[k:l])
 
             t2 = datetime.datetime.now()
 
             if self.monitor:
                 self.monitor.stop_monitor()
-            
+
             # print("Updating layer importances...")
-            # print("====================================")
-            self._update_layer_importances()
+            #             # print("====================================")
+            if not args.update_batch:
+                self._update_layer_importances() 
             # print(self.layer_importances[1])
 
             print("\nSET-MLP Epoch ", i)
@@ -588,7 +612,7 @@ class SET_MLP:
 
             # test model performance on the test data at each epoch
             # this part is useful to understand model performance and can be commented for production settings
-            if testing and i % 10 == 0:
+            if testing:
                 t3 = datetime.datetime.now()
                 accuracy_test, activations_test = self.predict(x_test, y_test)
                 accuracy_train, activations_train = self.predict(x, y_true)
@@ -597,12 +621,14 @@ class SET_MLP:
                 maximum_accuracy = max(maximum_accuracy, accuracy_test)
                 loss_test = self.loss.loss(y_test, activations_test)
                 loss_train = self.loss.loss(y_true, activations_train)
-                metrics[i, 0] = loss_train
-                metrics[i, 1] = loss_test
-                metrics[i, 2] = accuracy_train
-                metrics[i, 3] = accuracy_test
+                metrics[run, i, 0] = loss_train
+                metrics[run, i, 1] = loss_test
+                metrics[run, i, 2] = accuracy_train
+                metrics[run, i, 3] = accuracy_test
+                print(metrics)
 
                 print(f"Testing time: {t4 - t3}; \n"
+                      f"Loss train: {loss_train}; \n"
                       f"Loss test: {loss_test}; \n"
                       f"Accuracy test: {accuracy_test}; \n"
                       f"Maximum accuracy val: {maximum_accuracy} \n")
@@ -610,20 +636,58 @@ class SET_MLP:
 
 
             t5 = datetime.datetime.now()
-            if i < epochs - 1:  # do not change connectivity pattern after the last epoch
+            if i < epochs - 1 and not args.update_batch:  # do not change connectivity pattern after the last epoch
                 # self.weights_evolution_I() # this implementation is more didactic, but slow.
                 self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
-            # save performance metrics values in a file
-            if self.save_filename != "":
-                np.savetxt(self.save_filename +".txt", metrics)
+            # # save performance metrics values in a file
+            # if self.save_filename != "":
+            #     np.savetxt(self.save_filename +".txt", metrics)
 
-            if self.save_filename != "" and self.monitor:
-                with open(self.save_filename + "_monitor.json", 'w') as file:
-                    file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
+            # if self.save_filename != "" and self.monitor:
+            #     with open(self.save_filename + "_monitor.json", 'w') as file:
+            #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
+
+        # Plot the train and test loss after training
+        # print(run+1)
+        # print(run+1==args.runs)
+        if run+1 == args.runs:
+            return self._plot_loss_from_metrics(metrics, run)
+
+
+    def _plot_loss_from_metrics(self, metrics, run):
+        # plot the train and test loss using metrics array
+
+        # instead of the above, plot the mean and std of the loss for each epoch (result should be shape (epochs, ))
+        mean_train_loss = np.mean(metrics[:, :, 0], axis=0)
+        mean_test_loss = np.mean(metrics[:, :, 1], axis=0)
+        std_train_loss = np.std(metrics[:, :, 0], axis=0)
+        std_test_loss = np.std(metrics[:, :, 1], axis=0)
+
+        plt.plot(mean_train_loss, label="Train loss")
+        plt.plot(mean_test_loss, label="Test loss")
+
+        # fill with the confidence interval
+        print(mean_train_loss.shape)
+        print(mean_train_loss)
+
+        plt.fill_between(range(mean_train_loss.shape[0]), mean_train_loss - std_train_loss  , mean_train_loss + std_train_loss, alpha=0.2)
+        plt.fill_between(range(mean_test_loss.shape[0]), mean_test_loss - std_test_loss, mean_test_loss + std_test_loss, alpha=0.2)
+
+        plt.legend()
+
+        # do xticks every 5 epochs
+        plt.xticks(np.arange(0, mean_train_loss.shape[0], 5))
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.title("Train and test loss")
+        plt.savefig(f"train_test_loss_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{run+1}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}.png")
+
+
+
         return metrics
 
     def get_core_input_connections(self):
@@ -698,39 +762,19 @@ class SET_MLP:
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
         # Every 50 epochs, save a plot of the distribution of the sum of weights of the input layer
         if epoch % 50 == 0 and args.plotting:
-            self._plot_input_distribution(epoch, self.input_sum.copy())
+            self._plot_input_distribution(epoch, copy.deepcopy(self.input_sum))
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
             t_ev_1 = datetime.datetime.now()
-            # print(i) # layer number
-            # print(self.w[i].copy().get_shape()) # shape of the layer
 
-            # Importance Pruning (on the hidden layer(s)), currenly OFF in my implementation
-            if self.importance_pruning and epoch % 10 == 0 and epoch > 100:
-                # TODO: ship this to a separate function, and call it from here
-                print("Importance Pruning")
-                # print(self.w[i].shape) # (input, nhidden)
-                sum_incoming_weights = np.abs(self.w[i]).sum(axis=0)
-                # print(sum_incoming_weights.shape) # (1, nhidden))
-
-                t = np.percentile(sum_incoming_weights, 20, axis=1)
-                sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
-                # print(sum_incoming_weights)
-                ids = np.argwhere(sum_incoming_weights == 0)
-                print("ids", ids.shape)
-
-                weights = self.w[i].tolil()
-                pdw = self.pdw[i].tolil()
-
-                weights[:, ids[:,1]] = 0
-                pdw[:, ids[:,1]] = 0
-
-                self.w[i] = weights.tocsr()
-                self.pdw[i] = pdw.tocsr()
+            # Importance pruning (on the hidden layers)
+            if self.importance_pruning and epoch % 5 == 0 and epoch > 25:
+                # print(f"Importance pruning in layer {i}, epoch {epoch}")
+                self._importance_pruning(epoch=epoch, i=i)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 25 == 0 and epoch > 100 and i == 1:
+            if self.input_pruning and epoch % 5 == 0 and epoch > 25 and i == 1:
                 self._input_pruning(epoch=epoch, i=i)
 
             # converting to COO form - Added by Amar
@@ -836,7 +880,7 @@ class SET_MLP:
             # print("Number of non zeros in W and PD matrix after evolution in layer",i,[(self.w[i].data.shape[0]), (self.pdw[i].data.shape[0])])
 
             t_ev_2 = datetime.datetime.now()
-            print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
+            # print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
             self.evolution_time += (t_ev_2 - t_ev_1).seconds
 
     def _plot_input_distribution(self, epoch, values):
@@ -899,13 +943,17 @@ if __name__ == "__main__":
     epsilon = 20  # set the sparsity level
     zeta = 0.3 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
     no_training_epochs = args.epochs
-    batch_size = 128
+    batch_size = 256
     dropout_rate = 0.3
     learning_rate = args.lr
     lamda = args.lamda
     momentum = args.momentum
     weight_decay = 0.0002
     allrelu_slope = args.allrelu_slope
+    epochs = args.epochs
+    metrics = np.zeros((args.runs, epochs, 4))
+
+    print(args.update_batch)
     # k = args.K
 
     # make a list of the layers
@@ -924,7 +972,10 @@ if __name__ == "__main__":
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
 
         set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
-                          (AlternatedLeftReLU(-allrelu_slope), Softmax), epsilon=epsilon) # One-layer version
+                          (AlternatedLeftReLU(-allrelu_slope), Softmax), 
+                          input_pruning=args.input_pruning,
+                          importance_pruning=args.importance_pruning,
+                          epsilon=epsilon) # One-layer version
         # set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, no_hidden_neurons_layer, no_hidden_neurons_layer, y_train.shape[1]),
         #                   (AlternatedLeftReLU(-allrelu_slope), AlternatedLeftReLU(allrelu_slope), AlternatedLeftReLU(-allrelu_slope), Softmax), 
         #                    epsilon=epsilon) # Three-layer version                
@@ -948,10 +999,14 @@ if __name__ == "__main__":
             testing=True,
             save_filename=f"results/set_mlp_sequential_{no_training_samples}_training_samples_e{epsilon}_rand{str(i)}",
             monitor=True,
+            run=i,
+            metrics=metrics,
         )
+
 
         step_time = time.time() - start_time
         print("\nTotal execution time: ", step_time)
+        print("\nTotal training time: ", set_mlp.training_time)
         print("\nTotal training time: ", set_mlp.training_time)
         print("\nTotal testing time: ", set_mlp.testing_time)
         print("\nTotal evolution time: ", set_mlp.evolution_time)
@@ -964,7 +1019,7 @@ if __name__ == "__main__":
         start_time = time.time()
         accuracy, _ = set_mlp.predict(x_test, y_test, batch_size=100)
         # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
-        selected_features, importances = select_input_neurons(set_mlp.w[1].copy(), args.K)
+        selected_features, importances = select_input_neurons(copy.deepcopy(set_mlp.w[1]), args.K)
         # print(set_mlp.w[1])
         # print(f"The choosing of the {args.K} most important weights took {time.time() - start_time} seconds")
         
@@ -1004,10 +1059,10 @@ if __name__ == "__main__":
         y_test = np.argmax(y_test, axis=1)
 
         # print all shapes
-        print(f"The shape of x_train is: {x_train.shape}")
-        print(f"The shape of x_train_new is: {x_train_new.shape}")
-        print(f"The shape of x_test is: {x_test.shape}")
-        print(f"The shape of x_test_new is: {x_test_new.shape}")
+        # print(f"The shape of x_train is: {x_train.shape}")
+        # print(f"The shape of x_train_new is: {x_train_new.shape}")
+        # print(f"The shape of x_test is: {x_test.shape}")
+        # print(f"The shape of x_test_new is: {x_test_new.shape}")
         # print(f"The shape of y_train is: {y_train.shape}")
         # print(f"The shape of y_test is: {y_test.shape}")
 
@@ -1020,11 +1075,5 @@ if __name__ == "__main__":
         accuracies.append(accuracy_topk)
         print_and_log(accuracy_topk)
 
-        # plot the features
-        if args.plot_features:
-            plot_features(data=args.data)
-
-        if args.plot_importances:
-            plot_importances(importances, args.K)
     print(accuracies)
     print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds, with mean accuracy {round(np.mean(accuracies)*100, 4)}% and std {round(np.std(accuracies)*100, 4)}%")
