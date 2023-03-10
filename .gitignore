@@ -146,3 +146,5 @@ input_weight_distribution/
 pruning/
 
 .vscode/
+
+.DS_Store

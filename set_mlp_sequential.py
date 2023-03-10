@@ -435,8 +435,8 @@ class SET_MLP:
 
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
     
-        curr_percentile = 20 + ((epoch/no_training_epochs) * 60)
-        t = np.percentile(sum_incoming_weights, 20)
+        curr_percentile = 20 + ((epoch/no_training_epochs) * 40)
+        t = np.percentile(sum_incoming_weights, curr_percentile)
         if t == 0:
             # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
             # It should be a function of epoch/n_epochs
@@ -594,6 +594,15 @@ class SET_MLP:
                     z, a, masks = self._feed_forward(x_[k:l], True)
 
                     self._back_prop(z, a, masks,  y_[k:l])
+                        # Importance pruning (on the hidden layers)
+            if self.importance_pruning and i % 5 == 0 and i > 3:
+                # print(f"Importance pruning in layer {1}, epoch {i}")
+                self._importance_pruning(epoch=i, i=1)
+
+            # Input neuron pruning (on the input layer)
+            if self.input_pruning and i % 5 == 0 and i > 3:
+                # print(f"Input pruning in layer {1}, epoch {i}")
+                self._input_pruning(epoch=i, i=1)
 
             t2 = datetime.datetime.now()
 
@@ -625,13 +634,13 @@ class SET_MLP:
                 metrics[run, i, 1] = loss_test
                 metrics[run, i, 2] = accuracy_train
                 metrics[run, i, 3] = accuracy_test
-                print(metrics)
+                # print(metrics)
 
                 print(f"Testing time: {t4 - t3}; \n"
-                      f"Loss train: {loss_train}; \n"
-                      f"Loss test: {loss_test}; \n"
-                      f"Accuracy test: {accuracy_test}; \n"
-                      f"Maximum accuracy val: {maximum_accuracy} \n")
+                      f"Loss train: {round(loss_train, 3)}; \n"
+                      f"Loss test: {round(loss_test, 3)}; \n"
+                      f"Accuracy test: {round(accuracy_test, 3)}; \n"
+                      f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n")
                 self.testing_time += (t4 - t3).seconds
 
 
@@ -679,12 +688,12 @@ class SET_MLP:
 
         plt.legend()
 
-        # do xticks every 5 epochs
-        plt.xticks(np.arange(0, mean_train_loss.shape[0], 5))
+        # do 20 x ticks equally spaced 
+        plt.xticks(np.arange(0, args.epochs, 20))
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.title("Train and test loss")
-        plt.savefig(f"train_test_loss_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{run+1}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}.png")
+        plt.savefig(f"loss_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_runs{run+1}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}.png")
 
 
 
@@ -767,15 +776,6 @@ class SET_MLP:
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
             t_ev_1 = datetime.datetime.now()
-
-            # Importance pruning (on the hidden layers)
-            if self.importance_pruning and epoch % 5 == 0 and epoch > 25:
-                # print(f"Importance pruning in layer {i}, epoch {epoch}")
-                self._importance_pruning(epoch=epoch, i=i)
-
-            # Input neuron pruning (on the input layer)
-            if self.input_pruning and epoch % 5 == 0 and epoch > 25 and i == 1:
-                self._input_pruning(epoch=epoch, i=i)
 
             # converting to COO form - Added by Amar
             wcoo = self.w[i].tocoo()
