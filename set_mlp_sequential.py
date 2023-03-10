@@ -508,7 +508,6 @@ class SET_MLP:
         self.w[i] = weights.tocsr()
         self.pdw[i] = pdw.tocsr()
 
-
     def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, eval_epoch, run, metrics, learning_rate=1e-3, momentum=0.9,
             weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False, 
 
@@ -661,12 +660,24 @@ class SET_MLP:
                 #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
 
-        # Plot the train and test loss after training
-        # print(run+1)
-        # print(run+1==args.runs)
-        if run+1 == args.runs:
-            return self._plot_loss_from_metrics(metrics, run)
+        # Save the metrics to a file
 
+        if run+1 == args.runs:
+            filename = f"results/metrics/metrics_{args.data}_{args.epochs}ep_bupd{args.update_batch}_{self.weight_init}_imppr{args.importance_pruning}_inppru{args.input_pruning}.npy"
+        # Create the npy file if it does not exist
+            if not os.path.exists(filename):
+                with open(filename, "wb") as f:
+                    np.save(f, metrics)
+            # Append the metrics to the npy file, except if the metric is zero
+            else:
+                with open(filename, "rb") as f:
+                    metrics_old = np.load(f)
+                metrics = np.concatenate((metrics_old, metrics), axis=0)
+                with open(filename, "wb") as f:
+                    np.save(f, metrics)
+
+            self._plot_loss_from_metrics(metrics, run)
+        return metrics 
 
     def _plot_loss_from_metrics(self, metrics, run):
         # plot the train and test loss using metrics array
@@ -680,10 +691,6 @@ class SET_MLP:
         plt.plot(mean_train_loss, label="Train loss")
         plt.plot(mean_test_loss, label="Test loss")
 
-        # fill with the confidence interval
-        print(mean_train_loss.shape)
-        print(mean_train_loss)
-
         plt.fill_between(range(mean_train_loss.shape[0]), mean_train_loss - std_train_loss  , mean_train_loss + std_train_loss, alpha=0.2)
         plt.fill_between(range(mean_test_loss.shape[0]), mean_test_loss - std_test_loss, mean_test_loss + std_test_loss, alpha=0.2)
 
@@ -691,12 +698,12 @@ class SET_MLP:
 
         # do 20 x ticks equally spaced 
         plt.xticks(np.arange(0, args.epochs, 20))
+        # Fix axis between 0 and 1
+        plt.ylim(0, 1)
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.title("Train and test loss")
         plt.savefig(f"loss_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_runs{run+1}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}.png")
-
-
 
         return metrics
 

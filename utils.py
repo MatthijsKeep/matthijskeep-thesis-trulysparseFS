@@ -137,7 +137,6 @@ def get_mnist_dataloaders(args, validation_split=0.0):
 
     return train_loader, valid_loader, test_loader
 
-
 def get_FashionMnist_dataloaders(args, validation_split=0.0):
     """Creates augmented train, validation, and test data loaders."""
     normalize = transforms.Normalize((0.2859,), (0.3530,))
@@ -183,7 +182,6 @@ def get_FashionMnist_dataloaders(args, validation_split=0.0):
 
     return train_loader, valid_loader, test_loader
 
-
 def get_madelon_dataloaders(args, validation_split=0.0):
     m, std = get_m_std_madelon()
     normalize = transforms.Normalize((m,), (std,))
@@ -224,7 +222,6 @@ def get_USPS_dataloaders(args, validation_split=0.0):
     train_loader, valid_loader, test_loader = get_loaders(train, test, args.batch_size, args.test_batch_size)
     return train_loader, valid_loader, test_loader
 
-
 def get_SMK_dataloaders(args, validation_split=0.0):
     m, std = get_m_std_SMK()
     normalize = transforms.Normalize((m,), (std,))
@@ -242,7 +239,6 @@ def get_PCMAC_dataloaders(args, validation_split=0.0):
     test = custom_data('PCMAC', './data', train=False, download=True, transform=transform)
     train_loader, valid_loader, test_loader = get_loaders(train, test, args.batch_size, args.test_batch_size)
     return train_loader, valid_loader, test_loader
-
 
 def get_HAR_dataloaders(args, validation_split=0.0):
     m, std = get_m_std_HAR()

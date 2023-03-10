@@ -1,6 +1,7 @@
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import seaborn as sns
 
@@ -334,13 +335,54 @@ def plot_average(data='MNIST'):
         # unknown dataset chosen so raise an error
         raise ValueError('Unknown dataset chosen, valid options currently are: MNIST, fashionMNIST')
 
+# Function to read in multiple npy files with metrics and plot them
+# Make one plot per dataset, with the mean and std of the test loss per epoch, with the shape (runs, epochs, 4) where 4 is the train loss, test loss, train accuracy, test accuracy
+# results/metrics/metrics_madelon_250epochs_batchupdateFalse_neuron_importance_importancepruningTrue_inputpruningTrue.npy
+# results/metrics/metrics_fashionmnist_250epochs_batchupdateFalse_neuron_importance_importancepruningTrue_inputpruningTrue.npy
+def plot_metrics():
+    metrics = {
+        file: np.load(f'results/metrics/{file}')
+        for file in os.listdir('results/metrics/')
+    }
+    #
+    # TODO: Adapt to handle multiple datasets
 
+    # For every entry in the metrics dict, plot the mean and std of the test loss per epoch, with the shape (runs, epochs, 4) where 4 is the train loss, test loss, train accuracy, test accuracy
+    for key, value in metrics.items():
+        print(key)
+        # shorten the key so that it is useful for plotting (shorten input_pruning to ip, neuron_importance to ni, etc.)
+        key = key.replace('metrics_', '')
+        key = key.replace('inputpruning', 'inp')
+        key = key.replace('neuron_importance', 'ni')
+        key = key.replace('he_uniform', 'hu')
+        key = key.replace('importancepruning', 'imp')
+        key = key.replace('batchupdate', 'bu')
+        key = key.replace('True', '1')
+        key = key.replace('False', '0')
+        key = key.replace('epochs', 'e')
+
+        mean_test_loss = np.mean(value[:, :, 1], axis=0)
+        # print(mean_test_loss)
+        std_test_loss = np.std(value[:, :, 1], axis=0)
+
+        plt.plot(mean_test_loss, label=f"Loss {key}")
+        plt.fill_between(range(mean_test_loss.shape[0]), mean_test_loss - std_test_loss, mean_test_loss + std_test_loss, alpha=0.2)
+
+    plt.legend()
+
+    # do 20 x ticks equally spaced 
+    plt.xticks(np.arange(0, 250, 20))
+    # Fix axis between 0 and 1
+    plt.ylim(0, 1)
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Train and test loss")
+    plt.savefig(f"loss_all_metrics.png")
 
 
 
 if __name__ == '__main__':
-    plot_importances(args.data)
-    # plot_features(args.data)
-    plot_average(args.data)
-
-
+    # plot_average(data='MNIST')
+    # plot_average(data='FashionMnist')
+    # plot_features()
+    plot_metrics()
