@@ -27,7 +27,7 @@ python set_mlp_sequential.py epochs=250, runs=10, batch_size=128, lr=0.001, mome
 </details>
 
 
-<details><summary># Results</summary>
+# Results
 ##  Loss plots for different methods
 ### Madelon dataset
 #### Without batch update
@@ -40,4 +40,4 @@ python set_mlp_sequential.py epochs=250, runs=10, batch_size=128, lr=0.001, mome
 ![](loss_madelon_250epochs_batchupdateTrue_runs10_he_uniform_importancepruningTrue_inputpruningTrue.png)
 ##### With neuron importance
 ![](loss_madelon_250epochs_batchupdateTrue_runs10_neuron_importance_importancepruningTrue_inputpruningTrue.png)
-</details>
+
