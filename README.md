@@ -13,5 +13,15 @@ TBD
 TBD 
 
 # Results
-![](results.JPG) 
-To be changed
+##  Loss plots for different methods
+### Madelon dataset
+#### Without batch update
+##### Without neuron importance 
+![](loss_madelon_250epochs_batchupdateFalse_runs10_he_uniform_importancepruningTrue_inputpruningTrue.png)
+##### With neuron importance
+![](loss_madelon_250epochs_batchupdateFalse_runs10_neuron_importance_importancepruningTrue_inputpruningTrue.png) 
+#### With batch update 
+##### Without neuron importance
+![](loss_madelon_250epochs_batchupdateTrue_runs10_he_uniform_importancepruningTrue_inputpruningTrue.png)
+##### With neuron importance
+![](loss_madelon_250epochs_batchupdateTrue_runs10_neuron_importance_importancepruningTrue_inputpruningTrue.png)

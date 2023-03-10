@@ -509,9 +509,9 @@ class SET_MLP:
         self.pdw[i] = pdw.tocsr()
 
 
-    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, run, metrics, learning_rate=1e-3, momentum=0.9,
+    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, eval_epoch, run, metrics, learning_rate=1e-3, momentum=0.9,
             weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False, 
-            
+
             ):
         """
         Train the network.
@@ -548,21 +548,21 @@ class SET_MLP:
             self.input_weights = copy.deepcopy(self.w[1])
             _, self.input_sum = select_input_neurons(self.input_weights, args.K)
             # print(f"The shape of the input layer weights is: {self.input_sum.shape}")
-            if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % 50 == 0 or i == epochs:
+            if i == 0 or i == 1 or i == 5 or i == 10 or i == 25 or i % eval_epoch == 0 or i == epochs:
                 start_time = time.time()
                 print("In eval loop")
                 importances_for_eval = copy.deepcopy(self.input_sum)
                 importances_for_eval = pd.DataFrame(importances_for_eval).to_csv(header=False, index=False)
 
-                importances_path = f"importances/importances_{str(args.data)}_{i}_{str(args.model)}.csv"
+                importances_path = f"importances/importances_{str(args.data)}_{i}_MLP.csv"
                 if not os.path.exists(os.path.dirname(importances_path)):
                     os.makedirs(os.path.dirname(importances_path))
 
                 with open(importances_path, 'w') as f:
                     f.write(importances_for_eval)
 
-                # Round the time to 5 decimals
-                # print(f"Choosing the features before epoch {i} took {round(time.time() - start_time, 5)} seconds")
+                        # Round the time to 5 decimals
+                        # print(f"Choosing the features before epoch {i} took {round(time.time() - start_time, 5)} seconds")
 
             seed = np.arange(x.shape[0])
             np.random.shuffle(seed)
@@ -595,12 +595,12 @@ class SET_MLP:
 
                     self._back_prop(z, a, masks,  y_[k:l])
                         # Importance pruning (on the hidden layers)
-            if self.importance_pruning and i % 5 == 0 and i > 3:
+            if self.importance_pruning and i % 5 == 0 and i > 25:
                 # print(f"Importance pruning in layer {1}, epoch {i}")
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i % 5 == 0 and i > 3:
+            if self.input_pruning and i % 5 == 0 and i > 25:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -613,7 +613,7 @@ class SET_MLP:
             #             # print("====================================")
             if not args.update_batch:
                 print("Updating layer importances...")
-                self._update_layer_importances() 
+                self._update_layer_importances()
             # print(self.layer_importances[1])
 
             print("\nSET-MLP Epoch ", i)
@@ -652,13 +652,13 @@ class SET_MLP:
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
-            # # save performance metrics values in a file
-            # if self.save_filename != "":
-            #     np.savetxt(self.save_filename +".txt", metrics)
+                # # save performance metrics values in a file
+                # if self.save_filename != "":
+                #     np.savetxt(self.save_filename +".txt", metrics)
 
-            # if self.save_filename != "" and self.monitor:
-            #     with open(self.save_filename + "_monitor.json", 'w') as file:
-            #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
+                # if self.save_filename != "" and self.monitor:
+                #     with open(self.save_filename + "_monitor.json", 'w') as file:
+                #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
 
         # Plot the train and test loss after training
@@ -941,18 +941,19 @@ if __name__ == "__main__":
     # erdos renyi formula for sparsity level
     # 
 
-    epsilon = 20  # set the sparsity level
-    zeta = 0.3 # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
+    epsilon = args.epsilon  # set the sparsity level
+    zeta = args.zeta # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
     no_training_epochs = args.epochs
-    batch_size = 256
-    dropout_rate = 0.3
+    batch_size = args.batch_size
+    dropout_rate = args.dropout_rate
     learning_rate = args.lr
     lamda = args.lamda
     momentum = args.momentum
-    weight_decay = 0.0002
+    weight_decay = args.weight_decay
     allrelu_slope = args.allrelu_slope
     epochs = args.epochs
     metrics = np.zeros((args.runs, epochs, 4))
+    eval_epoch = args.eval_epoch
 
     print(args.update_batch)
     # k = args.K
@@ -1004,6 +1005,7 @@ if __name__ == "__main__":
             monitor=True,
             run=i,
             metrics=metrics,
+            eval_epoch=eval_epoch,
         )
 
 
@@ -1035,7 +1037,7 @@ if __name__ == "__main__":
         # convert to csv
         selected_features_for_eval = selected_features_for_eval.to_csv(header=False, index=False)
 
-        selected_features_path = f"features/selected_features_{str(args.data)}_{no_training_epochs}_{str(args.model)}.csv"
+        selected_features_path = f"features/selected_features_{str(args.data)}_{no_training_epochs}_MLP.csv"
         if not os.path.exists(os.path.dirname(selected_features_path)):
             os.makedirs(os.path.dirname(selected_features_path))
 
@@ -1046,7 +1048,7 @@ if __name__ == "__main__":
         # convert to csv
         importances_for_eval = importances_for_eval.to_csv(header=False, index=False)
 
-        importances_path = f"importances/importances_{str(args.data)}_{no_training_epochs}_{str(args.model)}.csv"
+        importances_path = f"importances/importances_{str(args.data)}_{no_training_epochs}_MLP.csv"
         if not os.path.exists(os.path.dirname(importances_path)):
             os.makedirs(os.path.dirname(importances_path))
 
