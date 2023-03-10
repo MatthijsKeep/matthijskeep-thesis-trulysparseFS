@@ -612,6 +612,7 @@ class SET_MLP:
             # print("Updating layer importances...")
             #             # print("====================================")
             if not args.update_batch:
+                print("Updating layer importances...")
                 self._update_layer_importances() 
             # print(self.layer_importances[1])
 
@@ -966,6 +967,8 @@ if __name__ == "__main__":
             x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
         elif args.data == 'madelon':
             x_train, y_train, x_test, y_test = load_madelon_data()
+        else:
+            raise ValueError("Unknown dataset")
         np.random.seed(i)
         
 
