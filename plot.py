@@ -339,11 +339,14 @@ def plot_average(data='MNIST'):
 # Make one plot per dataset, with the mean and std of the test loss per epoch, with the shape (runs, epochs, 4) where 4 is the train loss, test loss, train accuracy, test accuracy
 # results/metrics/metrics_madelon_250epochs_batchupdateFalse_neuron_importance_importancepruningTrue_inputpruningTrue.npy
 # results/metrics/metrics_fashionmnist_250epochs_batchupdateFalse_neuron_importance_importancepruningTrue_inputpruningTrue.npy
+# only get .npy files
 def plot_metrics():
     metrics = {
         file: np.load(f'results/metrics/{file}')
-        for file in os.listdir('results/metrics/')
+        for file in os.listdir('results/metrics')
+        if file.endswith('.npy')
     }
+
     #
     # TODO: Adapt to handle multiple datasets
 
@@ -357,27 +360,37 @@ def plot_metrics():
         key = key.replace('he_uniform', 'hu')
         key = key.replace('importancepruning', 'imp')
         key = key.replace('batchupdate', 'bu')
+        key = key.replace('bupd', 'bu')
         key = key.replace('True', '1')
         key = key.replace('False', '0')
         key = key.replace('epochs', 'e')
 
+        print(value.shape)
+
         mean_test_loss = np.mean(value[:, :, 1], axis=0)
         # print(mean_test_loss)
         std_test_loss = np.std(value[:, :, 1], axis=0)
+        plt.rcParams["figure.figsize"] = (10, 10)
+        plt.plot(mean_test_loss, label=f"{key}")
+        plt.fill_between(range(mean_test_loss.shape[0]), mean_test_loss - std_test_loss, mean_test_loss + std_test_loss, alpha=0.1)
 
-        plt.plot(mean_test_loss, label=f"Loss {key}")
-        plt.fill_between(range(mean_test_loss.shape[0]), mean_test_loss - std_test_loss, mean_test_loss + std_test_loss, alpha=0.2)
-
-    plt.legend()
-
+    # order the legend alphabetically
+    handles, labels = plt.gca().get_legend_handles_labels()
+    labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
+    plt.legend(handles, labels)
+    
+    # increase the size of the plot
+    
     # do 20 x ticks equally spaced 
     plt.xticks(np.arange(0, 250, 20))
     # Fix axis between 0 and 1
-    plt.ylim(0, 1)
+    plt.ylim(0.5, 0.8)
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.title("Train and test loss")
-    plt.savefig(f"loss_all_metrics.png")
+    # Save as a vector image (svg) and as a png
+    plt.savefig("loss_all_metrics.png")
+    plt.savefig("loss_all_metrics.svg")
 
 
 

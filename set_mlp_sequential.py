@@ -322,8 +322,24 @@ class SET_MLP:
         lamda = self.lamda
         temp = np.array(copy.deepcopy(self.input_sum)).reshape(-1)
         
+        
+        # update the layer importances for the input layer
         self.layer_importances[1] = self.layer_importances[1] * lamda + temp * (1 - lamda) # NOTE (Matthijs): Only update input layer for now
-        self.layer_importances[self.n_layers] = self.layer_importances[self.n_layers] # NOTE (Matthijs): Output layer, but I don't know how to do this yet
+        # updating the layer importances for the hidden layers
+        hidden_importance = False # will test later
+        if hidden_importance:
+            for i in range(2, self.n_layers):
+                temp2 = np.array(np.sum(np.abs(copy.deepcopy(self.w[i])), axis=1)).reshape(-1)
+                # print(temp2.shape) # should be (nhidden, ), thus 200, for now
+                self.layer_importances[i] = self.layer_importances[i] * lamda + temp2 * (1 - lamda)
+            # Print summary statistics for the hidden layer importance
+            # print(f"Layer {i} importance summary statistics:")
+            # print(f"Mean: {np.mean(self.layer_importances[i])}")
+            # print(f"Median: {np.median(self.layer_importances[i])}")
+            # print(f"Max: {np.max(self.layer_importances[i])}")
+            # print(f"Min: {np.min(self.layer_importances[i])}")
+            # print(f"Std: {np.std(self.layer_importances[i])}")
+
 
         # print(f"Updating the layer importances took {round(time.time() - start_time, 2)} seconds")
 
@@ -594,12 +610,12 @@ class SET_MLP:
 
                     self._back_prop(z, a, masks,  y_[k:l])
                         # Importance pruning (on the hidden layers)
-            if self.importance_pruning and i % 5 == 0 and i > 25:
+            if self.importance_pruning and i % 10 == 0 and i > 25:
                 # print(f"Importance pruning in layer {1}, epoch {i}")
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i % 5 == 0 and i > 25:
+            if self.input_pruning and i % 10 == 0 and i > 25:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -663,7 +679,7 @@ class SET_MLP:
         # Save the metrics to a file
 
         if run+1 == args.runs:
-            filename = f"results/metrics/metrics_{args.data}_{args.epochs}ep_bupd{args.update_batch}_{self.weight_init}_imppr{args.importance_pruning}_inppru{args.input_pruning}.npy"
+            filename = f"results/metrics/metrics_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}_zeta{args.zeta}.npy"
         # Create the npy file if it does not exist
             if not os.path.exists(filename):
                 with open(filename, "wb") as f:

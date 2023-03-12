@@ -7,7 +7,7 @@ def get_parser():
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--runs', type=int, default=1, help='Number of runs for the feature search experiment.')
 
-    parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+    parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                         help='input batch size for training (default: 100)')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.1)')
@@ -29,6 +29,7 @@ def get_parser():
     parser.add_argument('--update_batch', type=bool, default=False, help='Schedule for topology update')
     parser.add_argument('--input_pruning', type=bool, default=False, help='If true, the input layer will be pruned.')
     parser.add_argument('--importance_pruning', type=bool, default=False, help='If true, the importance pruning will be used.')
+    parser.add_argument('--hidden_importance', type=bool, default=False, help='If true, the hidden importance will be used.')
 
     parser.add_argument('--plotting', type=bool, default=False, help='If true, some plotting will be used.')
     
