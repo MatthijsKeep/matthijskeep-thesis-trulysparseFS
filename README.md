@@ -8,7 +8,7 @@ Code repository belonging to Master Thesis at Technical University of Eindhoven,
 
 # Abstract
 
-TBD
+Recently, a novel category of embedded feature selection algorithms, leveraging the representational power of neural networks, has been developed. Despite its efficacy in certain contexts, its computational efficiency is not sufficient to make it a practical solution. We propose a supervised approach to selecting features for the training of neural networks, which leverages the representational capability of a neural network within the framework of sparse neural networks for improved efficiency. Our approach demonstrates the potential to achieve both accuracy and efficiency; it achieved +3% classification accuracy over other supervised methods while using only a tenth of the epochs. Initial experiments conducted across three datasets (Madelon, MNIST and FashionMNIST) showed that our feature selection method performs well and is viable for further development. 
 
 # Usage
 
