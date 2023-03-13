@@ -109,9 +109,10 @@ def run_feature_selection_baselines(data='madelon', models=None):
             train_y = np.argmax(train_y, axis=1)
             test_y = np.argmax(test_y, axis=1)
 
-            model = LassoNetClassifierCV(
+            model = LassoNetClassifierCV(M=K,
             hidden_dims=(10,),
             verbose=True,
+            dropout=0.2,
             )
             path = model.path(train_X, train_y)
 
