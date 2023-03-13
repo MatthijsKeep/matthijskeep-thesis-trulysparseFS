@@ -111,8 +111,7 @@ def run_feature_selection_baselines(data='madelon', models=None):
 
             model = LassoNetClassifierCV(M=K,
             hidden_dims=(10,),
-            verbose=True,
-            dropout=0.2,
+            verbose=False,
             )
             path = model.path(train_X, train_y)
 
