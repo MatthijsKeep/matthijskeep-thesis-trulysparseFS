@@ -1,6 +1,10 @@
+from lassonet import LassoNetClassifierCV, plot_path
+from ll_l21 import proximal_gradient_descent, feature_ranking
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif, RFE, SelectFromModel
+from sklearn.linear_model import SGDClassifier, MultiTaskElasticNetCV
+from stg import STG
 from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data
 
 from numpy import loadtxt
@@ -38,33 +42,66 @@ def run_feature_selection_baselines(data='madelon', models=None):
 
 
     for model in models:
-        if model == 'xgboost':
+        if model == 'MultiTaskElasticNetCV':
+            print(f"\n Running MultiTaskElasticNetCV on {data} dataset \n")
             train_X, train_y, test_X, test_y = load_in_data(data)
-            print(f"\n Running XGBoost on {data} dataset \n")
-            model = XGBClassifier()
-            model.fit(train_X, train_y)
-
             # If the data is madelon, take K=20, else K=50 features from model feature importance
             K = 20 if data == 'madelon' else 50
-            # Get the feature importance from the model
-            feature_importance = model.feature_importances_
+
+            W, obj, val_gamma = proximal_gradient_descent(train_X, train_y, z=0.1, verbose=True)
+
+            idx = feature_ranking(W)
+
+            # train a classification model with the selected features on the training dataset
+            train_X_new = train_X[:, idx[:K]]
+            test_X_new = test_X[:, idx[:K]]
+
+            # Train SVM classifier with the selected features
+            train_y = np.argmax(train_y, axis=1)
+            test_y = np.argmax(test_y, axis=1)
+            print(f"The x shapes going into the SVM are {train_X_new.shape} and {test_X_new.shape}")
+            print(f"The y shapes going into the SVM are {train_y.shape} and {test_y.shape}")
+
+            acc = svm_test(train_X_new, train_y, test_X_new, test_y)
+
+            metrics['MultiTaskElasticNetCV']['accuracy'].append(acc)
+            print('MultiTaskElasticNetCV Accuracy: ', acc)
+        if model == 'stochastic_gates':
+            print(f"\n Running STG on {data} dataset \n")
+            train_X, train_y, test_X, test_y = load_in_data(data)
+            # If the data is madelon, take K=20, else K=50 features from model feature importance
+            K = 20 if data == 'madelon' else 50
+
+            # make labels from one-hot encoding to single integer
+            train_y = np.argmax(train_y, axis=1)
+            test_y = np.argmax(test_y, axis=1)
+
+            # make STG (classification) take K features
+            model = STG(task_type='classification',input_dim=train_X.shape[1], output_dim=2, hidden_dims=[60, 20], activation='tanh',
+                        optimizer='SGD', learning_rate=0.1, batch_size=train_X.shape[0], feature_selection=True, sigma=0.5, 
+                        lam=0.5, random_state=1, device='cpu') 
+            # If you get an error here, replace collections with collections.abc in the source code
+            model.fit(train_X, train_y, nr_epochs=100, verbose=False)
+            gates = model.get_gates(mode='prob')
+            print(f"gates.shape: {gates.shape}")
+
             # Get the indices of the top K features
-            top_k_indices = np.argsort(feature_importance)[::-1][:K]
+            top_k_indices = np.argsort(gates)[::-1][:K]
+
             # Get the top K features
             train_X_new = train_X[:, top_k_indices]
             test_X_new = test_X[:, top_k_indices]
 
-            # make labels from one-hot encoding to single integer
-            train_y = np.argmax(train_y, axis=1)
-            test_y = np.argmax(test_y, axis=1)
+            print("The shapes going into the SVM are", train_X_new.shape, test_X_new.shape)
             # Train SVM classifier with the selected features
             acc = svm_test(train_X_new, train_y, test_X_new, test_y)
 
-            metrics['xgboost']['accuracy'].append(acc)
-            print('XGBoost Accuracy: ', acc)
-        if model == 'f_classif':
-            print(f"\n Running f_classif on {data} dataset \n")
+            metrics['stochastic_gates']['accuracy'].append(acc)
+            print('STG Accuracy: ', acc)
+        if model == 'LassoNet':
+            print(f"\n Running LassoNet on {data} dataset \n")
             train_X, train_y, test_X, test_y = load_in_data(data)
+
             # If the data is madelon, take K=20, else K=50 features from model feature importance
             K = 20 if data == 'madelon' else 50
 
@@ -72,86 +109,31 @@ def run_feature_selection_baselines(data='madelon', models=None):
             train_y = np.argmax(train_y, axis=1)
             test_y = np.argmax(test_y, axis=1)
 
-            train_X_new = SelectKBest(f_classif, k=K).fit_transform(train_X, train_y)
-            # take the same features from test data
-            test_X_new = SelectKBest(f_classif, k=K).fit_transform(test_X, test_y)
+            model = LassoNetClassifierCV(
+            hidden_dims=(10,),
+            verbose=True,
+            )
+            path = model.path(train_X, train_y)
 
-            # Train SVM classifier with the selected features
-            acc = svm_test(train_X_new, train_y, test_X_new, test_y)
+            plot_path(model, path, test_X, test_y)
 
-            metrics['f_classif']['accuracy'].append(acc)
-            print('f_classif Accuracy: ', acc)
-        if model == 'mutual_info_classif':
-            print(f"\n Running mutual_info_classif on {data} dataset \n")
-            train_X, train_y, test_X, test_y = load_in_data(data)
-            # If the data is madelon, take K=20, else K=50 features from model feature importance
-            K = 20 if data == 'madelon' else 50
+            plt.savefig("lasso_madelon.png")
 
-            # make labels from one-hot encoding to single integer
-            train_y = np.argmax(train_y, axis=1)
-            test_y = np.argmax(test_y, axis=1)
-
-            train_X_new = SelectKBest(mutual_info_classif, k=K).fit_transform(train_X, train_y)
-            # take the same features from test data
-            test_X_new = SelectKBest(mutual_info_classif, k=K).fit_transform(test_X, test_y)
-
-            # Train SVM classifier with the selected features
-            acc = svm_test(train_X_new, train_y, test_X_new, test_y)
-
-            metrics['mutual_info_classif']['accuracy'].append(acc)
-            print('mutual_info_classif Accuracy: ', acc)
-        if model == 'LinearSVC':
-            print(f"\n Running LinearSVC on {data} dataset \n")
-            train_X, train_y, test_X, test_y = load_in_data(data)
-            # If the data is madelon, take K=20, else K=50 features from model feature importance
-            K = 20 if data == 'madelon' else 50
-
-            # make labels from one-hot encoding to single integer
-            train_y = np.argmax(train_y, axis=1)
-            test_y = np.argmax(test_y, axis=1)
-
-            # LinearSVC with L1-based feature selection, until there are K features left
-            lsvc = svm.LinearSVC(C=0.00553, penalty="l1", dual=False).fit(train_X, train_y)
-            model = SelectFromModel(lsvc, prefit=True)
-            print(f"Number of features before LinearSVC: {train_X.shape[1]}")
-            train_X_new = model.transform(train_X)
-            test_X_new = model.transform(test_X)
-            print(f"Number of features after LinearSVC: {train_X_new.shape[1]}")
+            plt.clf()
 
 
-            # Train SVM classifier with the selected features
-            acc = svm_test(train_X_new, train_y, test_X_new, test_y)
-
-            metrics['LinearSVC']['accuracy'].append(acc)
-            print('LinearSVC Accuracy: ', acc)
-        if model == 'RandomForestClassifier':
-            print(f"\n Running RandomForestClassifier on {data} dataset \n")
-            train_X, train_y, test_X, test_y = load_in_data(data)
-            # If the data is madelon, take K=20, else K=50 features from model feature importance
-            K = 20 if data == 'madelon' else 50
-
-            # make labels from one-hot encoding to single integer
-            train_y = np.argmax(train_y, axis=1)
-            test_y = np.argmax(test_y, axis=1)
-
-            # LinearSVC with L1-based feature selection, until there are K features left
-            clf = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
-            clf.fit(train_X, train_y)
-
-            feature_importance = clf.feature_importances_
-            # print(f"Number of features before RandomForestClassifier: {train_X.shape[1]}")
+            # Get the indices of the top K features
+            print(model.get_params())
+            top_k_indices = np.argsort(model.feature_importances_.numpy())[::-1][:K]
             # Get the top K features
-            top_k_indices = np.argsort(feature_importance)[::-1][:K]
             train_X_new = train_X[:, top_k_indices]
             test_X_new = test_X[:, top_k_indices]
-            # print(f"Number of features after RandomForestClassifier: {train_X_new.shape[1]}")
-
 
             # Train SVM classifier with the selected features
             acc = svm_test(train_X_new, train_y, test_X_new, test_y)
 
-            metrics['RandomForestClassifier']['accuracy'].append(acc)
-            print('RandomForestClassifier Accuracy: ', acc)
+            metrics['LassoNet']['accuracy'].append(acc)
+            print('LassoNet Accuracy: ', acc)
 
     # Save the metrics
     with open(f'./results/{data}_feature_selection_metrics.json', 'w') as f:
@@ -166,16 +148,16 @@ def run_feature_selection_baselines(data='madelon', models=None):
         )
     )
 
-    # print the metrics
+    # print the metrics and round to 3 decimal places
     print(f"\n\nMetrics for {data} dataset: \n")
     for model, metric in metrics.items():
         print(f"Model: {model}")
-        print(f"Accuracy: {round(metric['accuracy'][0], 3)}")
+        for metric_name, metric_value in metric.items():
+            print(f"{metric_name}: {round(np.mean(metric_value), 3)}")
 
-    
 
     
 if __name__ == '__main__':
     # run_feature_selection_baselines(data='madelon')
-    run_feature_selection_baselines(data='madelon', models=['xgboost', 'f_classif', 'mutual_info_classif', 'LinearSVC', 'RandomForestClassifier'])
+    run_feature_selection_baselines(data='madelon', models=['MultiTaskElasticNetCV', 'stochastic_gates', 'LassoNet'])
     # run_feature_selection_baselines(data='fashion_mnist'
