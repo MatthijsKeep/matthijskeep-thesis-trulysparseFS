@@ -40,7 +40,6 @@ def run_feature_selection_baselines(data='madelon', models=None):
     metrics = {model: {"accuracy": []} for model in models}
 
 
-
     for model in models:
         if model == 'MultiTaskElasticNetCV':
             print(f"\n Running MultiTaskElasticNetCV on {data} dataset \n")

@@ -604,8 +604,7 @@ class SET_MLP:
                     if i < epochs - 1:
                     # self.weights_evolution_I() # this implementation is more didactic, but slow.
                         self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
-                else: 
-                    # print(args.update_batch) 
+                else: # epoch update instead of batch update 
                     z, a, masks = self._feed_forward(x_[k:l], True)
 
                     self._back_prop(z, a, masks,  y_[k:l])
