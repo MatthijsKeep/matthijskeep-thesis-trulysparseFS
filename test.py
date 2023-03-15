@@ -1,12 +1,13 @@
-from lassonet import LassoNetClassifierCV, plot_path
-from ll_l21 import proximal_gradient_descent, feature_ranking
+# from lassonet import LassoNetClassifierCV, plot_path
+# from ll_l21 import proximal_gradient_descent, feature_ranking
 from sklearn import svm
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif, RFE, SelectFromModel
-from sklearn.linear_model import SGDClassifier, MultiTaskElasticNetCV
-from stg import STG
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif, RFE, SelectFromModel
+# from sklearn.linear_model import SGDClassifier, MultiTaskElasticNetCV
+# from stg import STG
 from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data
 
+# TODO - move experiments to a separate file
 from numpy import loadtxt
 from xgboost import XGBClassifier
 

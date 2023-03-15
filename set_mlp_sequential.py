@@ -480,10 +480,6 @@ class SET_MLP:
             plt.savefig(f"pruning/{epoch}.png")
             plt.close()
 
-        # print(matrix2828.shape)
-        # print(matrix2828)
-        # print(ids)
-
         weights = self.w[i].tolil()
         pdw = self.pdw[i].tolil()
 
@@ -602,7 +598,7 @@ class SET_MLP:
                     self._update_layer_importances()
 
                     if i < epochs - 1:
-                    # self.weights_evolution_I() # this implementation is more didactic, but slow.
+                        # self.weights_evolution_I() # this implementation is more didactic, but slow.
                         self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
                 else: # epoch update instead of batch update 
                     z, a, masks = self._feed_forward(x_[k:l], True)
