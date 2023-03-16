@@ -990,7 +990,6 @@ if __name__ == "__main__":
             raise ValueError("Unknown dataset")
         np.random.seed(i)
         
-
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
 
         set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
@@ -1004,6 +1003,7 @@ if __name__ == "__main__":
 
 
         start_time = time.time()
+        
         # train SET-MLP
         set_mlp.fit(
             x_train,
@@ -1080,15 +1080,7 @@ if __name__ == "__main__":
         # change y_train and y_test from one-hot to single label
         y_train = np.argmax(y_train, axis=1)
         y_test = np.argmax(y_test, axis=1)
-
-        # print all shapes
-        # print(f"The shape of x_train is: {x_train.shape}")
-        # print(f"The shape of x_train_new is: {x_train_new.shape}")
-        # print(f"The shape of x_test is: {x_test.shape}")
-        # print(f"The shape of x_test_new is: {x_test_new.shape}")
-        # print(f"The shape of y_train is: {y_train.shape}")
-        # print(f"The shape of y_test is: {y_test.shape}")
-
+        
         # time the tesitng
         start_time = time.time()
         accuracy_topk = round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
