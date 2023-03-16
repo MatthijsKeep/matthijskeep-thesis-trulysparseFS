@@ -545,32 +545,31 @@ def load_fashion_mnist_data(no_training_samples, no_testing_samples):
 if __name__ == "__main__":
 
     sum_training_time = 0
-    runs = 1
+    runs = 10
     svm_accs = np.zeros(runs)
     data = 'madelon'
     K = 20 if data == 'madelon' else 50
 
+    # load data
+    no_training_samples = 50000  # max 60000 for Fashion MNIST
+    no_testing_samples = 10000  # max 10000 for Fshion MNIST
+    # set model parameters
+    no_hidden_neurons_layer = 200
+    epsilon = 20  # set the sparsity level
+    zeta = 0.3  # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
+    no_training_epochs = 250
+    batch_size = 256
+    dropout_rate = 0.3
+    learning_rate = 0.001
+    momentum = 0.9
+    weight_decay = 0.0002
+
     for i in range(runs):
 
-        # load data
-        no_training_samples = 5000  # max 60000 for Fashion MNIST
-        no_testing_samples = 1000  # max 10000 for Fshion MNIST
         if data == 'fashion_mnist':
             x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
-
-        if data == 'madelon':
+        elif data == 'madelon':
             x_train, y_train, x_test, y_test = load_madelon_data()
-        
-        # set model parameters
-        no_hidden_neurons_layer = 1000
-        epsilon = 13  # set the sparsity level
-        zeta = 0.3  # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
-        no_training_epochs = 400
-        batch_size = 40
-        dropout_rate = 0.2
-        learning_rate = 0.05
-        momentum = 0.9
-        weight_decay = 0.0002
 
         np.random.seed(i)
 
@@ -580,9 +579,23 @@ if __name__ == "__main__":
 
         start_time = time.time()
         # train SET-MLP
-        set_mlp.fit(x_train, y_train, x_test, y_test, loss=CrossEntropy, epochs=no_training_epochs, batch_size=batch_size, learning_rate=learning_rate,
-                    momentum=momentum, weight_decay=weight_decay, zeta=zeta, dropoutrate=dropout_rate, testing=True,
-                    save_filename="Pretrained_results/set_mlp_" + str(no_training_samples) + "_training_samples_e" + str(epsilon) + "_rand" + str(i), monitor=True)
+        set_mlp.fit(
+            x_train,
+            y_train,
+            x_test,
+            y_test,
+            loss=CrossEntropy,
+            epochs=no_training_epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            zeta=zeta,
+            dropoutrate=dropout_rate,
+            testing=True,
+            save_filename=f"Pretrained_results/set_mlp_{no_training_samples}_training_samples_e{epsilon}_rand{str(i)}",
+            monitor=True,
+        )
 
         step_time = time.time() - start_time
         print("\nTotal training time: ", step_time)
@@ -600,5 +613,5 @@ if __name__ == "__main__":
         svm_acc = svm_test(train_X_new, y_train, test_X_new, y_test)
         svm_accs[i] = svm_acc
 
-        print("\nAccuracy of the last epoch on the testing data: ", smv_acc)
+        print("\nAccuracy of the last epoch on the testing data: ", svm_acc)
     print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds")

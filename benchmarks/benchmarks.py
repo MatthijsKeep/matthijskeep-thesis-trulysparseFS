@@ -1,7 +1,6 @@
 from lassonet_fs import lassonet_fs
 from multitaskelasticnetcv import multitask_fs
 from stg_fs import stg_fs
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif, RFE, SelectFromModel
 from sklearn.linear_model import SGDClassifier, MultiTaskElasticNetCV
 
@@ -61,4 +60,6 @@ def run_feature_selection_baselines(data='madelon', models=None):
             print(f"{metric_name}: {round(np.mean(metric_value), 3)}")
 
 if __name__ == '__main__':
-    run_feature_selection_baselines(data='madelon', models=['MultiTaskElasticNetCV', 'stochastic_gates', 'LassoNet'])
+    run_feature_selection_baselines(data='madelon', models=['MultiTaskElasticNetCV', 
+                                                            'stochastic_gates', 
+                                                            'LassoNet'])
