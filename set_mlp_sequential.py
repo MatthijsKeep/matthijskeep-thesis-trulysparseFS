@@ -42,7 +42,7 @@ from scipy.sparse import dok_matrix
 from test import svm_test # new 
 from utils.nn_functions import *
 
-from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data
+from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_smk, load_gla
 from wasap_sgd.train.monitor import Monitor
 
 import copy
@@ -929,6 +929,14 @@ class SET_MLP:
             l = (j + 1) * batch_size
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
+
+        # add the remaining test cases (after the loop above has run j times)
+        if x_test.shape[0] % batch_size != 0:
+            k = j * batch_size
+            l = x_test.shape[0]
+            _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
+            activations[k:l] = a_test[self.n_layers]
+        
         accuracy = compute_accuracy(activations, y_test)
         return accuracy, activations
 
@@ -986,6 +994,18 @@ if __name__ == "__main__":
             x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
         elif args.data == 'madelon':
             x_train, y_train, x_test, y_test = load_madelon_data()
+        elif args.data == 'usps':
+            x_train, y_train, x_test, y_test = load_usps()
+        elif args.data == 'coil':
+            x_train, y_train, x_test, y_test = load_coil()
+        elif args.data == 'isolet':
+            x_train, y_train, x_test, y_test = load_isolet()
+        elif args.data == 'har':
+            x_train, y_train, x_test, y_test = load_har()
+        elif args.data == 'smk':
+            x_train, y_train, x_test, y_test = load_smk()
+        elif args.data == 'gla':
+            x_train, y_train, x_test, y_test = load_gla()
         else:
             raise ValueError("Unknown dataset")
         np.random.seed(i)
@@ -1089,6 +1109,6 @@ if __name__ == "__main__":
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
         accuracies.append(accuracy_topk)
         print_and_log(accuracy_topk)
-
+    np.savetxt(f"benchmarks/results/truly_sparse_FS/{args.data}_{runs}.csv", accuracies, delimiter=",")
     print(accuracies)
     print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds, with mean accuracy {round(np.mean(accuracies)*100, 4)}% and std {round(np.std(accuracies)*100, 4)}%")
