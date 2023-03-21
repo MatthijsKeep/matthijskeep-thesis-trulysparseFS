@@ -28,22 +28,32 @@ if __name__ == '__main__':
     # for every file in results/set 
     # calculate the mean and standard deviation
     # print the results
-    for file in os.listdir('benchmarks/results/set'):
-        print("Statistics for the Set-baseline")
-        print("==============================")
-        print(
-            f"The {file} statistics: {calc_stats(str(f'benchmarks/results/set/{file}'))}"
-        )
-        print("\n")
 
-    for file in os.listdir('benchmarks/results/truly_sparse_base'):
-        print("Statistics for the Truly Sparse Base")
-        print("=====================================")
-        print(f"The {file} statistics: {calc_stats(str(f'benchmarks/results/truly_sparse_base/{file}'))}")
-        print("\n")
+    print("Statistics for the Set-baseline")
+    print("==============================")
+    for file in os.listdir('benchmarks/results/set'):
+        # format the filename to something more readable for printing
+        # remove .csv extension
+        print_name = file[:-4]
+        stats = calc_stats(str(f'benchmarks/results/set/{file}'))
+
+        print(f"{print_name} statistics: {stats[0]}% +/- {stats[1]}%")
+    print("\n")
     
+
+    print("Statistics for the Truly Sparse Base")
+    print("=====================================")
+    for file in os.listdir('benchmarks/results/truly_sparse_base'):
+        print_name = file[:-4]    
+        stats = calc_stats(str(f'benchmarks/results/truly_sparse_base/{file}'))
+        print(f"{print_name} statistics: {stats[0]}% +/- {stats[1]}%")
+    print("\n")
+
+    print("Statistics for the My method (FS)")
+    print("=====================")
     for file in os.listdir('benchmarks/results/truly_sparse_FS/'):
-        print("Statistics for the My method (FS)")
-        print("=====================")
-        print(f"The {file} statistics: {calc_stats(str(f'benchmarks/results/truly_sparse_FS/{file}'))}")
-        print("\n")
+        # format the filename to something more readable for printing
+        print_name = file[:-4]   
+        stats = calc_stats(str(f'benchmarks/results/truly_sparse_FS/{file}'))
+        print(f"{print_name} statistics: {stats[0]}% +/- {stats[1]}%")
+    print("\n")
