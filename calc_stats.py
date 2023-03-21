@@ -18,8 +18,8 @@ def calc_stats(file):
     # round to 4 decimal places
     # convert to percentage
 
-    mean = round(np.mean(lines)*100, 3)
-    std = round(np.std(lines)*100, 3)
+    mean = round(np.mean(lines)*100, 2)
+    std = round(np.std(lines)*100, 2)
 
     return mean, std
 

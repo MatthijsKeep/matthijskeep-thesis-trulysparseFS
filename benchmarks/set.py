@@ -33,16 +33,19 @@
 # Ritchie Vink (https://www.ritchievink.com): for making available on Github a nice Python implementation of fully connected MLPs. This SET-MLP implementation was built on top of his MLP code:
 #                                             https://github.com/ritchie46/vanilla-machine-learning/blob/master/vanilla_mlp.py
 
+from argparser import get_parser
 from scipy.sparse import lil_matrix
 from scipy.sparse import coo_matrix
 from scipy.sparse import dok_matrix
 from utils.nn_functions import *
 
 from test import load_in_data, svm_test
-from utils.load_data import load_fashion_mnist_data, load_madelon_data
+from utils.load_data import load_fashion_mnist_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_pcmac, load_smk, load_gla
+
 
 import copy
 import datetime
+import logging
 import os
 import time
 import json
@@ -118,6 +121,36 @@ def array_intersect(a, b):
     dtype = {'names': ['f{}'.format(i) for i in range(n_cols)], 'formats': n_cols * [a.dtype]}
     return np.in1d(a.view(dtype), b.view(dtype))  # boolean return
 
+def setup_logger(args): 
+    global logger
+    if logger == None:
+        logger = logging.getLogger()
+    else:  # wish there was a logger.close()
+        for handler in logger.handlers[:]:  # make a copy of the list
+            logger.removeHandler(handler)
+    args_copy = copy.deepcopy(args)
+    # copy to get a clean hash
+    # use the same log file hash if iterations or verbose are different
+    # these flags do not change the results
+    args_copy.iters = 1
+    args_copy.verbose = False
+    args_copy.log_interval = 1
+    log_path = './logs/{0}.log'.format('ae')
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S')
+    fh = logging.FileHandler(log_path)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+def print_and_log(msg):
+    global logger
+    print(msg)
+    logger.info(msg)
+
+
+if not os.path.exists('./models'): os.mkdir('./models')
+if not os.path.exists('./logs'): os.mkdir('./logs')
+logger = None
 
 class SET_MLP:
     def __init__(self, dimensions, activations, epsilon=20):
@@ -239,6 +272,7 @@ class SET_MLP:
             backpropagation_updates_numpy(a[i - 1], delta, dw.row, dw.col, dw.data)
 
             update_params[i - 1] = (dw.tocsr(),  np.mean(delta, axis=0))
+        # print("right before the _update_w_b function")
         for k, v in update_params.items():
             self._update_w_b(k, v[0], v[1])
 
@@ -250,6 +284,8 @@ class SET_MLP:
         :param dw: (array) Partial derivatives
         :param delta: (array) Delta error.
         """
+        # print("now in the _update_w_b function")
+        # print(self.pdw)
 
         # perform the update with momentum
         if index not in self.pdw:
@@ -301,13 +337,20 @@ class SET_MLP:
 
             # training
             t1 = datetime.datetime.now()
+            # if the shape is smaller than the batch size then the batch size is set to the shape of the data
+            if x.shape[0] < batch_size:
+                batch_size = x.shape[0]
 
             for j in range(x.shape[0] // batch_size):
                 k = j * batch_size
                 l = (j + 1) * batch_size
+                # print("right before the _feed_forward function")
                 z, a, masks = self._feed_forward(x_[k:l], True)
-
+                # print("right before the _back_prop function")
                 self._back_prop(z, a, masks,  y_[k:l])
+
+
+
 
             t2 = datetime.datetime.now()
 
@@ -316,6 +359,8 @@ class SET_MLP:
 
             print("\nSET-MLP Epoch ", i)
             print("Training time: ", t2 - t1)
+
+            # print(self.pdw)
 
             # test model performance on the test data at each epoch
             # this part is useful to understand model performance and can be commented for production settings
@@ -428,6 +473,8 @@ class SET_MLP:
                 rows_w = wcoo.row
                 cols_w = wcoo.col
 
+                print(i)
+                print(self.pdw)
                 pdcoo = self.pdw[i].tocoo()
                 vals_pd = pdcoo.data
                 rows_pd = pdcoo.row
@@ -509,11 +556,25 @@ class SET_MLP:
         :return: (array) A 2D array of shape (n_cases, n_classes).
         """
         activations = np.zeros((y_test.shape[0], y_test.shape[1]))
+
+        # also work with batch sizes that do not exactly divide the number of test cases
+        
+        # calculate number of batches (without the overflow) as variable j
+        j_max = x_test.shape[0] // batch_size
+
         for j in range(x_test.shape[0] // batch_size):
             k = j * batch_size
             l = (j + 1) * batch_size
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
+        
+        # add the remaining test cases (after the loop above has run j times)
+        if x_test.shape[0] % batch_size != 0:
+            k = j_max * batch_size
+            l = x_test.shape[0]
+            _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
+            activations[k:l] = a_test[self.n_layers]
+
         accuracy = compute_accuracy(activations, y_test)
         return accuracy, activations
 
@@ -521,7 +582,7 @@ class SET_MLP:
 def load_fashion_mnist_data(no_training_samples, no_testing_samples):
     np.random.seed(0)
 
-    data = np.load("data/fashion_mnist.npz")
+    data = np.load("data/FashionMNIST/fashion_mnist.npz")
 
     index_train = np.arange(data["X_train"].shape[0])
     np.random.shuffle(index_train)
@@ -542,11 +603,16 @@ def load_fashion_mnist_data(no_training_samples, no_testing_samples):
 
 
 if __name__ == "__main__":
+    parser = get_parser()
+    args = parser.parse_args()
+    print("*******************************************************")
+    setup_logger(args)
+    print_and_log(args)
 
     sum_training_time = 0
     runs = 10
     svm_accs = np.zeros(runs)
-    data = 'madelon'
+    data = args.data
     K = 20 if data == 'madelon' else 50
 
     # load data
@@ -562,19 +628,38 @@ if __name__ == "__main__":
     learning_rate = 0.001
     momentum = 0.9
     weight_decay = 0.0002
+    allrelu_slope = 0.6
 
     for i in range(runs):
+        # TODO - standardize all data loading functions to 1 function
 
         if data == 'fashion_mnist':
             x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
+        elif data == 'mnist':
+            x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
+        elif data == 'USPS':
+            x_train, y_train, x_test, y_test = load_usps()
+        elif data == 'coil':
+            x_train, y_train, x_test, y_test = load_coil()
+        elif data == 'isolet':
+            x_train, y_train, x_test, y_test = load_isolet()
+        elif data == 'har':
+            x_train, y_train, x_test, y_test = load_har()
+        elif data == 'pcmac':
+            x_train, y_train, x_test, y_test = load_pcmac()
+        elif data == 'smk':
+            x_train, y_train, x_test, y_test = load_smk()
+        elif data == 'gla':
+            x_train, y_train, x_test, y_test = load_gla()
         elif data == 'madelon':
             x_train, y_train, x_test, y_test = load_madelon_data()
 
         np.random.seed(i)
 
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
-        set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, no_hidden_neurons_layer, no_hidden_neurons_layer, y_train.shape[1]),
-                          (Relu, Relu, Relu, Softmax), epsilon=epsilon)
+        print(x_train.shape[1])
+        set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
+                          (AlternatedLeftReLU(-allrelu_slope), Softmax), epsilon=epsilon)
 
         start_time = time.time()
         # train SET-MLP
@@ -609,8 +694,13 @@ if __name__ == "__main__":
         y_train = np.argmax(y_train, axis=1)
         y_test = np.argmax(y_test, axis=1)
 
+        # TODO - Test if the shapes going into the SVM are the ones you expect so (n_samples, 20) and (n_samples,)
+        print(f"Shape going into the SVM: {train_X_new.shape} and {y_train.shape} and {test_X_new.shape} and {y_test.shape}")
+
         svm_acc = svm_test(train_X_new, y_train, test_X_new, y_test)
         svm_accs[i] = svm_acc
 
         print("\nAccuracy of the last epoch on the testing data: ", svm_acc)
     print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds")
+    # Export the svm_accs to a csv file with run, accuracy, filename = {data}_{runs}.csv to the benchmark/results folder
+    np.savetxt(f"benchmarks/results/set/{data}_{runs}.csv", svm_accs, delimiter=",")
