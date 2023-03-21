@@ -81,7 +81,15 @@ class CrossEntropy:
         :param y: (array) Prediction vector
         :return: (flt)
         """
+        # count the amount of NaN in y
+
+        # print(y)
+        # print("------------------")
+        # print(y.sum(axis=-1, keepdims=True))
+
+
         y /= y.sum(axis=-1, keepdims=True)
+        
         output = np.clip(y, 1e-7, 1 - 1e-7)
         return np.sum(y_true * - np.log(output), axis=-1).sum() / y.shape[0]
 

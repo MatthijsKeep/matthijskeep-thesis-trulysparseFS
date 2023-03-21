@@ -37,10 +37,10 @@ from scipy.sparse import lil_matrix
 from scipy.sparse import coo_matrix
 from scipy.sparse import dok_matrix
 from utils.nn_functions import *
-
 from test import load_in_data, svm_test
-from utils.load_data import load_fashion_mnist_data, load_madelon_data
 
+from utils.load_data import load_fashion_mnist_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_pcmac, load_smk, load_gla
+from wasap_sgd.train.monitor import Monitor
 import copy
 import datetime
 import os
@@ -49,6 +49,9 @@ import json
 import sys
 import numpy as np
 from numba import njit, prange
+
+import logging
+from argparser import get_parser
 
 stderr = sys.stderr
 sys.stderr = open(os.devnull, 'w')
@@ -95,9 +98,25 @@ def dropout(x, rate):
     return x * scale * keep_mask, keep_mask
 
 
-def create_sparse_weights(epsilon, n_rows, n_cols):
+def createSparseWeights_II(epsilon,noRows,noCols):
+    # generate an Erdos Renyi sparse weights mask
+    weights = lil_matrix((noRows, noCols))
+    for i in range(epsilon * (noRows + noCols)):
+        weights[np.random.randint(0, noRows), np.random.randint(0, noCols)] = np.float32(np.random.randn()/10)
+    print("Create sparse matrix with ", weights.getnnz(), " connections and ",
+          (weights.getnnz()/(noRows * noCols))*100, "% density level")
+    weights = weights.tocsr()
+    return weights
+
+
+def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
     # He uniform initialization
-    limit = np.sqrt(6. / float(n_rows))
+    if weight_init == 'he_uniform':
+        limit = np.sqrt(6. / float(n_rows))
+
+    # Xavier initialization
+    if weight_init == 'xavier':
+        limit = np.sqrt(6. / (float(n_rows) + float(n_cols)))
 
     mask_weights = np.random.rand(n_rows, n_cols)
     prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections
@@ -118,24 +137,52 @@ def array_intersect(a, b):
     dtype = {'names': ['f{}'.format(i) for i in range(n_cols)], 'formats': n_cols * [a.dtype]}
     return np.in1d(a.view(dtype), b.view(dtype))  # boolean return
 
+def setup_logger(args): 
+    global logger
+    if logger == None:
+        logger = logging.getLogger()
+    else:  # wish there was a logger.close()
+        for handler in logger.handlers[:]:  # make a copy of the list
+            logger.removeHandler(handler)
+    args_copy = copy.deepcopy(args)
+    # copy to get a clean hash
+    # use the same log file hash if iterations or verbose are different
+    # these flags do not change the results
+    args_copy.iters = 1
+    args_copy.verbose = False
+    args_copy.log_interval = 1
+    log_path = './logs/{0}.log'.format('ae')
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S')
+    fh = logging.FileHandler(log_path)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+def print_and_log(msg):
+    global logger
+    print(msg)
+    logger.info(msg)
+
+
+if not os.path.exists('./models'): os.mkdir('./models')
+if not os.path.exists('./logs'): os.mkdir('./logs')
+logger = None
+
+
 
 class SET_MLP:
-    def __init__(self, dimensions, activations, epsilon=20):
+    def __init__(self, dimensions, activations, epsilon=20, weight_init='he_uniform'):
         """
         :param dimensions: (tpl/ list) Dimensions of the neural net. (input, hidden layer, output)
         :param activations: (tpl/ list) Activations functions.
-
         Example of three hidden layer with
         - 3312 input features
         - 3000 hidden neurons
         - 3000 hidden neurons
         - 3000 hidden neurons
         - 5 output classes
-
-
         layers -->    [1,        2,     3,     4,     5]
         ----------------------------------------
-
         dimensions =  (3312,     3000,  3000,  3000,  5)
         activations = (          Relu,  Relu,  Relu,  Sigmoid)
         """
@@ -148,10 +195,15 @@ class SET_MLP:
         self.epsilon = epsilon  # control the sparsity level as discussed in the paper
         self.zeta = None  # the fraction of the weights removed
         self.dimensions = dimensions
-
+        self.weight_init = weight_init
         self.save_filename = ""
         self.input_layer_connections = []
         self.monitor = None
+        self.importance_pruning = False
+
+        self.training_time = 0
+        self.testing_time = 0
+        self.evolution_time = 0
 
         # Weights and biases are initiated by index. For a one hidden layer net you will have a w[1] and w[2]
         self.w = {}
@@ -162,7 +214,12 @@ class SET_MLP:
         # Activations are also initiated by index. For the example we will have activations[2] and activations[3]
         self.activations = {}
         for i in range(len(dimensions) - 1):
-            self.w[i + 1] = create_sparse_weights(self.epsilon, dimensions[i], dimensions[i + 1])  # create sparse weight matrices
+            if self.weight_init == 'normal':
+                self.w[i + 1] = createSparseWeights_II(self.epsilon, dimensions[i],
+                                                       dimensions[i + 1])  # create sparse weight matrices
+            else:
+                self.w[i + 1] = create_sparse_weights(self.epsilon, dimensions[i], dimensions[i + 1],
+                                                      weight_init=self.weight_init)  # create sparse weight matrices
             self.b[i + 1] = np.zeros(dimensions[i + 1], dtype='float32')
             self.activations[i + 2] = activations[i]
 
@@ -193,14 +250,12 @@ class SET_MLP:
     def _back_prop(self, z, a, masks, y_true):
         """
         The input dicts keys represent the layers of the net.
-
         a = { 1: x,
               2: f(w1(x) + b1)
               3: f(w2(a2) + b2)
               4: f(w3(a3) + b3)
               5: f(w4(a4) + b4)
               }
-
         :param z: (dict) w(x) + b
         :param a: (dict) f(z)
         :param y_true: (array) One hot encoded truth vector.
@@ -245,7 +300,6 @@ class SET_MLP:
     def _update_w_b(self, index, dw, delta):
         """
         Update weights and biases.
-
         :param index: (int) Number of the layer
         :param dw: (array) Partial derivatives
         :param delta: (array) Delta error.
@@ -269,10 +323,10 @@ class SET_MLP:
         :param y_true: (array) Containing one hot encoded labels.
         :return (array) A 2D array of metrics (epochs, 3).
         """
-        if x.shape[0] != y_true.shape[0]:
+        if not x.shape[0] == y_true.shape[0]:
             raise ValueError("Length of x and y arrays don't match")
 
-        # self.monitor = Monitor(save_filename=save_filename) if monitor else None
+        self.monitor = Monitor(save_filename=save_filename) if monitor else None
 
         # Initiate the loss object with the final activation function
         self.loss = loss()
@@ -281,8 +335,8 @@ class SET_MLP:
         self.weight_decay = weight_decay
         self.zeta = zeta
         self.dropout_rate = dropoutrate
-        self.save_filename = save_filename
-        self.input_layer_connections.append(self.get_core_input_connections())
+        # self.save_filename = save_filename
+        # self.input_layer_connections.append(self.get_core_input_connections())
         # np.savez_compressed(self.save_filename + "_input_connections.npz",
         #                     inputLayerConnections=self.input_layer_connections)
 
@@ -316,6 +370,7 @@ class SET_MLP:
 
             print("\nSET-MLP Epoch ", i)
             print("Training time: ", t2 - t1)
+            self.training_time += (t2 - t1).seconds
 
             # test model performance on the test data at each epoch
             # this part is useful to understand model performance and can be commented for production settings
@@ -336,11 +391,12 @@ class SET_MLP:
                 print(f"Testing time: {t4 - t3}\n; Loss test: {loss_test}; \n"
                                  f"Accuracy test: {accuracy_test}; \n"
                                  f"Maximum accuracy val: {maximum_accuracy}")
+                self.testing_time += (t4 - t3).seconds
 
             t5 = datetime.datetime.now()
-            if i < epochs - 1:# do not change connectivity pattern after the last epoch
+            if i < epochs - 1:  # do not change connectivity pattern after the last epoch
                 # self.weights_evolution_I() # this implementation is more didactic, but slow.
-                self.weights_evolution_II()  # this implementation has the same behaviour as the one above, but it is much faster.
+                self.weights_evolution_II(i)  # this implementation has the same behaviour as the one above, but it is much faster.
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
@@ -415,13 +471,29 @@ class SET_MLP:
             self.pdw[i] = pdwdok.tocsr()
             self.w[i] = wdok.tocsr()
 
-    def weights_evolution_II(self):
+    def weights_evolution_II(self, epoch=0):
         # this represents the core of the SET procedure. It removes the weights closest to zero in each layer and add new random weights
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
                 t_ev_1 = datetime.datetime.now()
+
+                # Importance Pruning
+                if self.importance_pruning and epoch % 10 == 0 and epoch > 200:
+                    sum_incoming_weights = np.abs(self.w[i]).sum(axis=0)
+                    t = np.percentile(sum_incoming_weights, 20)
+                    sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+                    ids = np.argwhere(sum_incoming_weights == 0)
+
+                    weights = self.w[i].tolil()
+                    pdw = self.pdw[i].tolil()
+                    weights[:, ids[:,1]]=0
+                    pdw[:, ids[:,1]] = 0
+
+                    self.w[i] = weights.tocsr()
+                    self.pdw[i] = pdw.tocsr()
+
                 # converting to COO form - Added by Amar
                 wcoo = self.w[i].tocoo()
                 vals_w = wcoo.data
@@ -464,13 +536,18 @@ class SET_MLP:
 
                 # add new random connections
                 keep_connections = np.size(rows_w_new)
-                length_random = vals_w.shape[0]-keep_connections
-                limit = np.sqrt(6. / float(self.dimensions[i - 1]))
-                random_vals = np.random.uniform(-limit, limit, length_random)
-                zero_vals = 0*random_vals  # explicit zeros
+                length_random = vals_w.shape[0] - keep_connections
+                if self.weight_init == 'normal':
+                    random_vals = np.random.randn(length_random) / 10  # to avoid multiple whiles, can we call 3*rand?
+                else:
+                    if self.weight_init == 'he_uniform':
+                        limit = np.sqrt(6. / float(self.dimensions[i - 1]))
+                    if self.weight_init == 'xavier':
+                        limit = np.sqrt(6. / (float(self.dimensions[i - 1]) + float(self.dimensions[i])))
+                    random_vals = np.random.uniform(-limit, limit, length_random)
 
                 # adding  (wdok[ik,jk]!=0): condition
-                while length_random>0:
+                while length_random > 0:
                     ik = np.random.randint(0, self.dimensions[i - 1], size=length_random, dtype='int32')
                     jk = np.random.randint(0, self.dimensions[i], size=length_random, dtype='int32')
 
@@ -498,7 +575,8 @@ class SET_MLP:
                 # print("Number of non zeros in W and PD matrix after evolution in layer",i,[(self.w[i].data.shape[0]), (self.pdw[i].data.shape[0])])
 
                 t_ev_2 = datetime.datetime.now()
-                print("Weights evolution time for layer", i,"is", t_ev_2 - t_ev_1)
+                print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
+                self.evolution_time += (t_ev_2 - t_ev_1).seconds
 
     def predict(self, x_test, y_test, batch_size=100):
         """
@@ -515,58 +593,55 @@ class SET_MLP:
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
         accuracy = compute_accuracy(activations, y_test)
+        # add the remaining test cases (after the loop above has run j times)
+        if x_test.shape[0] % batch_size != 0:
+            k = j * batch_size
+            l = x_test.shape[0]
+            _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
+            activations[k:l] = a_test[self.n_layers]
         return accuracy, activations
 
 
-def load_fashion_mnist_data(no_training_samples, no_testing_samples):
-    np.random.seed(0)
-
-    data = np.load("data/fashion_mnist.npz")
-
-    index_train = np.arange(data["X_train"].shape[0])
-    np.random.shuffle(index_train)
-
-    index_test = np.arange(data["X_test"].shape[0])
-    np.random.shuffle(index_test)
-
-    x_train = data["X_train"][index_train[0:no_training_samples], :]
-    y_train = data["Y_train"][index_train[0:no_training_samples], :]
-    x_test = data["X_test"][index_test[0:no_testing_samples], :]
-    y_test = data["Y_test"][index_test[0:no_testing_samples], :]
-
-    # normalize in 0..1
-    x_train = x_train.astype('float64') / 255.
-    x_test = x_test.astype('float64') / 255.
-
-    return x_train, y_train, x_test, y_test
-
-
 if __name__ == "__main__":
+    parser = get_parser()
+    args = parser.parse_args()
+    print("*******************************************************")
+    setup_logger(args)
+    print_and_log(args)
 
     sum_training_time = 0
     runs = 10
     svm_accs = np.zeros(runs)
-    data = 'madelon'
+    data = args.data
     K = 20 if data == 'madelon' else 50
+    print(K)
 
-    # load data
-    no_training_samples = 50000  # max 60000 for Fashion MNIST
-    no_testing_samples = 10000  # max 10000 for Fshion MNIST
     # set model parameters
-    no_hidden_neurons_layer = 200
+    no_hidden_neurons_layer = 1000
     epsilon = 20  # set the sparsity level
     zeta = 0.3  # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
-    no_training_epochs = 250
-    batch_size = 256
+    no_training_epochs = 10
+    batch_size = 128
     dropout_rate = 0.3
-    learning_rate = 0.001
+    learning_rate = 0.01
     momentum = 0.9
     weight_decay = 0.0002
 
-    for i in range(runs):
+    # load data
+    no_training_samples = 60000  # max 60000 for Fashion MNIST
+    no_testing_samples = 10000  # max 10000 for Fshion MNIST
 
+    for i in range(runs):
         if data == 'fashion_mnist':
             x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
+        elif data == 'mnist':
+            x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
+        elif data == 'usps':
+            x_train, y_train, x_test, y_test = load_usps()
+        elif data == 'coil':
+            x_train, y_train, x_test, y_test = load_coil()
+        elif data == 'isolet':
+            x_train, y_train, x_test, y_test = load_isolet()
         elif data == 'madelon':
             x_train, y_train, x_test, y_test = load_madelon_data()
 
@@ -574,33 +649,26 @@ if __name__ == "__main__":
 
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
         set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, no_hidden_neurons_layer, no_hidden_neurons_layer, y_train.shape[1]),
-                          (Relu, Relu, Relu, Softmax), epsilon=epsilon)
+                          (AlternatedLeftReLU(-0.6), AlternatedLeftReLU(0.6), AlternatedLeftReLU(-0.6), Softmax), epsilon=epsilon)
 
         start_time = time.time()
         # train SET-MLP
-        set_mlp.fit(
-            x_train,
-            y_train,
-            x_test,
-            y_test,
-            loss=CrossEntropy,
-            epochs=no_training_epochs,
-            batch_size=batch_size,
-            learning_rate=learning_rate,
-            momentum=momentum,
-            weight_decay=weight_decay,
-            zeta=zeta,
-            dropoutrate=dropout_rate,
-            testing=True,
-            save_filename=f"Pretrained_results/set_mlp_{no_training_samples}_training_samples_e{epsilon}_rand{str(i)}",
-            monitor=True,
-        )
+        set_mlp.fit(x_train, y_train, x_test, y_test, loss=CrossEntropy, epochs=no_training_epochs, batch_size=batch_size, learning_rate=learning_rate,
+                    momentum=momentum, weight_decay=weight_decay, zeta=zeta, dropoutrate=dropout_rate, testing=True,
+                    save_filename="results/set_mlp_sequential_" + str(no_training_samples) + "_training_samples_e" + str(epsilon) + "_rand" + str(i), monitor=True)
 
         step_time = time.time() - start_time
-        print("\nTotal training time: ", step_time)
+        print("\nTotal execution time: ", step_time)
+        print("\nTotal training time: ", set_mlp.training_time)
+        print("\nTotal testing time: ", set_mlp.testing_time)
+        print("\nTotal evolution time: ", set_mlp.evolution_time)
         sum_training_time += step_time
 
+        # test SET-MLP
+        accuracy, _ = set_mlp.predict(x_test, y_test, batch_size=100)
+
         sum_weights = np.abs(set_mlp.w[1]).sum(axis=1)
+        print(f"Selecting {K} features")
         selected_features = important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:K]
         # test SET-MLP by selecting the top K features from the input layer
         train_X_new = np.squeeze(x_train[:, selected_features])
@@ -609,8 +677,13 @@ if __name__ == "__main__":
         y_train = np.argmax(y_train, axis=1)
         y_test = np.argmax(y_test, axis=1)
 
+        # TODO - Test if the shapes going into the SVM are the ones you expect so (n_samples, 20) and (n_samples,)
+        print(f"Shape going into the SVM: {train_X_new.shape} and {y_train.shape} and {test_X_new.shape} and {y_test.shape}")
+
         svm_acc = svm_test(train_X_new, y_train, test_X_new, y_test)
         svm_accs[i] = svm_acc
 
         print("\nAccuracy of the last epoch on the testing data: ", svm_acc)
     print(f"Average training time over {runs} runs is {sum_training_time/runs} seconds")
+    # Export the svm_accs to a csv file with run, accuracy, filename = {data}_{runs}.csv to the benchmark/results folder
+    np.savetxt(f"benchmarks/results/truly_sparse_base/{data}_{runs}.csv", svm_accs, delimiter=",")
