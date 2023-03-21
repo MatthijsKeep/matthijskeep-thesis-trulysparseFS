@@ -510,7 +510,6 @@ class SET_MLP:
         # print(sum_incoming_weights)
         ids = np.argwhere(sum_incoming_weights == 0)
         # print("ids", ids.shape)
-
         weights = self.w[i].tolil()
         pdw = self.pdw[i].tolil()
 
@@ -605,6 +604,26 @@ class SET_MLP:
 
                     self._back_prop(z, a, masks,  y_[k:l])
                         # Importance pruning (on the hidden layers)
+            if x.shape[0] % batch_size != 0: # if the batch size is not a multiple of the number of samples, take the last batch
+                k = (x.shape[0] // batch_size) * batch_size
+                l = x.shape[0]
+                if args.update_batch == True:
+                    z, a, masks = self._feed_forward(x_[k:l], True)
+                
+                    self._back_prop(z, a, masks,  y_[k:l])
+
+                    self._update_layer_importances()
+
+                    if i < epochs - 1:
+                        # self.weights_evolution_I() # this implementation is more didactic, but slow.
+                        self.weights_evolution_II(i)
+                else:
+                    z, a, masks = self._feed_forward(x_[k:l], True)
+                
+                    self._back_prop(z, a, masks,  y_[k:l])
+                    
+
+
             if self.importance_pruning and i % 10 == 0 and i > 25:
                 # print(f"Importance pruning in layer {1}, epoch {i}")
                 self._importance_pruning(epoch=i, i=1)
@@ -930,9 +949,10 @@ class SET_MLP:
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
 
+        j_max = x_test.shape[0] // batch_size
         # add the remaining test cases (after the loop above has run j times)
         if x_test.shape[0] % batch_size != 0:
-            k = j * batch_size
+            k = j_max * batch_size
             l = x_test.shape[0]
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
