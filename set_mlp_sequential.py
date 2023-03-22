@@ -584,7 +584,7 @@ class SET_MLP:
                                 inputLayerConnections=self.input_layer_connections)
 
         # 1-d sum of the absolute values of the input weights
-
+        min_loss = 1e9
         maximum_accuracy = 0
         early_stopping_counter = 0
         for i in range(epochs):
@@ -680,6 +680,7 @@ class SET_MLP:
 
             # test model performance on the test data at each epoch
             # this part is useful to understand model performance and can be commented for production settings
+            
             if testing:
                 t3 = datetime.datetime.now()
                 accuracy_test, activations_test = self.predict(x_test, y_test)
@@ -703,12 +704,11 @@ class SET_MLP:
                 self.testing_time += (t4 - t3).seconds
 
                 # If the loss_test does not improve for 10 epochs, stop the training
-                check_ep = max(i-10, 0)
-                loss_test_old = metrics[run, check_ep, 1]
-                print(f"Loss test old: {loss_test_old}")
-                print(f"Loss test: {loss_test}")
+                if loss_test < min_loss:
+                    min_loss = loss_test
+                    early_stopping_counter = 0
                 print(f"Early stopping counter: {early_stopping_counter}")
-                if loss_test > loss_test_old:
+                if loss_test > min_loss:
                     early_stopping_counter += 1
                     if early_stopping_counter == 10:
                         print(f"Early stopping run {run} epoch {i}")
@@ -721,8 +721,6 @@ class SET_MLP:
                             np.save(f, metrics)
                         # NOTE - other things to do before breaking the loop? Maybe the plot?
                         break
-                if loss_test < loss_test_old:
-                    early_stopping_counter = 0
 
 
 
