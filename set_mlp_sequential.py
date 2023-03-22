@@ -162,36 +162,10 @@ def select_input_neurons(weights, k):
             important_neurons: csr_matrix with only the k most important connections
     """
 
-    # get the sum of the absolute values of the weights for each neuron
-    sum_weights = np.abs(weights).sum(axis=1)
+    sum_weights = np.abs(weights).sum(axis=1)  # get the sum of the absolute values of the weights for each neuron
     print(f"The input neuron with the highest weight is: {np.argmax(sum_weights)}")
     important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:k]
-    # print(important_neurons_idx)
-    # print(f"The shape of the indices of the k most important neurons is: {important_neurons_idx.shape}")
-    # print(f"The {len(important_neurons_idx)} most important neurons are: {important_neurons_idx}")
-
-    # important_neurons = lil_matrix((weights.shape[0], weights.shape[1]))
-    # # important_neurons[important_neurons_idx, :] = weights[important_neurons_idx, :]
-    # # print(f"The weight matrix looks like: {weights}")
-
-    # # for each neuron, remove it from the sparse matrix if the neuron is not in the list of important neurons
-    # for i in range(weights.shape[0]):
-    #     if i not in important_neurons_idx:
-    #         weights[i, :] = 0
-    
-    
-    # important_neurons = weights.tocsr()
-    # # print(f"The important neurons matrix looks like: {important_neurons}")
-    
-    # # get the sum of the absolute values of the weights for each neuron, and include the indices
-    # sum_weights = np.abs(important_neurons).sum(axis=1)
-    # # sort the sum of the weights in descending order, and take the first k elements
-    # sum_weights = (np.sort(sum_weights, axis=0)[-k:])[::-1]
-    # # print(f"The sum of weights for each neuron is: {sum_weights.flatten()}")
-
-    # zip the indices and the sum of the weights
     important_neurons = np.abs(copy.deepcopy(set_mlp.w[1])).sum(axis=1)
-    # print(f"The important neurons are: {important_neurons}")
 
     return important_neurons_idx, important_neurons
 
@@ -242,6 +216,45 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     y_test = np.argmax(y_test, axis=1)
 
     return round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
+
+# TODO - ship this function into load_data
+def get_data(dataset):
+    """
+    Function to load the data from the dataset.
+
+    :param dataset: (string) Name of the dataset
+
+    :return x_train: (array) Training input
+    :return y_train: (array) Correct training output
+    :return x_test: (array) Test input
+    :return y_test: (array) Correct test output
+
+    """
+
+    if dataset == 'FashionMnist':
+        x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
+    elif dataset == 'mnist':
+        x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
+    elif dataset == 'madelon':
+        x_train, y_train, x_test, y_test = load_madelon_data()
+    elif dataset == 'usps':
+        x_train, y_train, x_test, y_test = load_usps()
+    elif dataset == 'coil':
+        x_train, y_train, x_test, y_test = load_coil()
+    elif dataset == 'isolet':
+        x_train, y_train, x_test, y_test = load_isolet()
+    elif dataset == 'har':
+        x_train, y_train, x_test, y_test = load_har()
+    elif dataset == 'smk':
+        x_train, y_train, x_test, y_test = load_smk()
+    elif dataset == 'gla':
+        x_train, y_train, x_test, y_test = load_gla()
+    elif dataset == 'synthetic':
+        pass # TODO - add synthetic data
+    else:
+        raise ValueError("Unknown dataset")
+    return x_train, y_train, x_test, y_test
+
 class SET_MLP:
     def __init__(self, dimensions, activations, input_pruning, importance_pruning, epsilon=20, weight_init='neuron_importance'):
         """
@@ -630,7 +643,7 @@ class SET_MLP:
                 l = x.shape[0]
                 if args.update_batch == True:
                     z, a, masks = self._feed_forward(x_[k:l], True)
-                
+
                     self._back_prop(z, a, masks,  y_[k:l])
                     self._update_layer_importances()
 
@@ -690,24 +703,22 @@ class SET_MLP:
                 self.testing_time += (t4 - t3).seconds
 
                 # If the loss_test does not improve for 10 epochs, stop the training
-                loss_test_old = metrics[run, i - 10, 1]
+                check_ep = max(i-10, 0)
+                loss_test_old = metrics[run, check_ep, 1]
+                print(f"Loss test old: {loss_test_old}")
+                print(f"Loss test: {loss_test}")
+                print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > loss_test_old:
                     early_stopping_counter += 1
                     if early_stopping_counter == 10:
                         print(f"Early stopping run {run} epoch {i}")
                         filename = f"results/metrics/metrics_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}_zeta{args.zeta}.npy"
-                    # Create the npy file if it does not exist
-                        if not os.path.exists(filename):
-                            with open(filename, "wb") as f:
-                                np.save(f, metrics)
-                        # Append the metrics to the npy file, except if the metric is zero
-                        else:
+                        if os.path.exists(filename):
                             with open(filename, "rb") as f:
                                 metrics_old = np.load(f)
                             metrics = np.concatenate((metrics_old, metrics), axis=0)
-                            with open(filename, "wb") as f:
-                                np.save(f, metrics)
-
+                        with open(filename, "wb") as f:
+                            np.save(f, metrics)
                         # NOTE - other things to do before breaking the loop? Maybe the plot?
                         break
                 if loss_test < loss_test_old:
@@ -722,31 +733,25 @@ class SET_MLP:
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
-                # # save performance metrics values in a file
-                # if self.save_filename != "":
-                #     np.savetxt(self.save_filename +".txt", metrics)
+                    # # save performance metrics values in a file
+                    # if self.save_filename != "":
+                    #     np.savetxt(self.save_filename +".txt", metrics)
 
-                # if self.save_filename != "" and self.monitor:
-                #     with open(self.save_filename + "_monitor.json", 'w') as file:
-                #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
+                    # if self.save_filename != "" and self.monitor:
+                    #     with open(self.save_filename + "_monitor.json", 'w') as file:
+                    #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
 
         # Save the metrics to a file
 
         if run+1 == args.runs:
             filename = f"results/metrics/metrics_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}_zeta{args.zeta}.npy"
-        # Create the npy file if it does not exist
-            if not os.path.exists(filename):
-                with open(filename, "wb") as f:
-                    np.save(f, metrics)
-            # Append the metrics to the npy file, except if the metric is zero
-            else:
+            if os.path.exists(filename):
                 with open(filename, "rb") as f:
                     metrics_old = np.load(f)
                 metrics = np.concatenate((metrics_old, metrics), axis=0)
-                with open(filename, "wb") as f:
-                    np.save(f, metrics)
-
+            with open(filename, "wb") as f:
+                np.save(f, metrics)
             self._plot_loss_from_metrics(metrics, run)
         return metrics 
 
@@ -1018,6 +1023,7 @@ if __name__ == "__main__":
     # load data
     no_training_samples = 50000  # max 60000 for Fashion MNIST
     no_testing_samples = 10000  # max 10000 for Fashion MNIST
+
     # set model parameters
     no_hidden_neurons_layer = args.nhidden
 
@@ -1043,26 +1049,7 @@ if __name__ == "__main__":
     for i in range(runs):
         print(args.data)
         print(i)
-        if args.data == 'FashionMnist':
-            x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
-        elif args.data == 'mnist':
-            x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
-        elif args.data == 'madelon':
-            x_train, y_train, x_test, y_test = load_madelon_data()
-        elif args.data == 'usps':
-            x_train, y_train, x_test, y_test = load_usps()
-        elif args.data == 'coil':
-            x_train, y_train, x_test, y_test = load_coil()
-        elif args.data == 'isolet':
-            x_train, y_train, x_test, y_test = load_isolet()
-        elif args.data == 'har':
-            x_train, y_train, x_test, y_test = load_har()
-        elif args.data == 'smk':
-            x_train, y_train, x_test, y_test = load_smk()
-        elif args.data == 'gla':
-            x_train, y_train, x_test, y_test = load_gla()
-        else:
-            raise ValueError("Unknown dataset")
+        x_train, y_train, x_test, y_test = get_data(args.data)
         np.random.seed(i)
         
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
