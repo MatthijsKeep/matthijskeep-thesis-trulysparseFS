@@ -221,6 +221,27 @@ def print_and_log(msg):
     print(msg)
     logger.info(msg)
 
+def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
+    """
+    Function to evaluate the feature selection using the input layers' weights.
+
+    :param x_train: (array) Training input
+    :param x_test: (array) Test input
+
+    :param y_train: (array) Correct training output
+    :param y_test: (array) Correct test output
+
+    :return: (float) Classification accuracy
+    """
+            # change x_train and x_test to only have the selected features
+    # print(selected_features)
+    x_train_new = np.squeeze(x_train[:, selected_features])
+    x_test_new = np.squeeze(x_test[:, selected_features])
+    # change y_train and y_test from one-hot to single label
+    y_train = np.argmax(y_train, axis=1)
+    y_test = np.argmax(y_test, axis=1)
+
+    return round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
 class SET_MLP:
     def __init__(self, dimensions, activations, input_pruning, importance_pruning, epsilon=20, weight_init='neuron_importance'):
         """
@@ -552,7 +573,7 @@ class SET_MLP:
         # 1-d sum of the absolute values of the input weights
 
         maximum_accuracy = 0
-
+        early_stopping_counter = 0
         for i in range(epochs):
             # Shuffle the data
             self.input_weights = copy.deepcopy(self.w[1])
@@ -611,7 +632,6 @@ class SET_MLP:
                     z, a, masks = self._feed_forward(x_[k:l], True)
                 
                     self._back_prop(z, a, masks,  y_[k:l])
-
                     self._update_layer_importances()
 
                     if i < epochs - 1:
@@ -619,9 +639,7 @@ class SET_MLP:
                         self.weights_evolution_II(i)
                 else:
                     z, a, masks = self._feed_forward(x_[k:l], True)
-                
                     self._back_prop(z, a, masks,  y_[k:l])
-                    
 
 
             if self.importance_pruning and i % 10 == 0 and i > 25:
@@ -638,8 +656,6 @@ class SET_MLP:
             if self.monitor:
                 self.monitor.stop_monitor()
 
-            # print("Updating layer importances...")
-            #             # print("====================================")
             if not args.update_batch:
                 print("Updating layer importances...")
                 self._update_layer_importances()
@@ -672,6 +688,31 @@ class SET_MLP:
                       f"Accuracy test: {round(accuracy_test, 3)}; \n"
                       f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n")
                 self.testing_time += (t4 - t3).seconds
+
+                # If the loss_test does not improve for 10 epochs, stop the training
+                loss_test_old = metrics[run, i - 10, 1]
+                if loss_test > loss_test_old:
+                    early_stopping_counter += 1
+                    if early_stopping_counter == 10:
+                        print(f"Early stopping run {run} epoch {i}")
+                        filename = f"results/metrics/metrics_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}_zeta{args.zeta}.npy"
+                    # Create the npy file if it does not exist
+                        if not os.path.exists(filename):
+                            with open(filename, "wb") as f:
+                                np.save(f, metrics)
+                        # Append the metrics to the npy file, except if the metric is zero
+                        else:
+                            with open(filename, "rb") as f:
+                                metrics_old = np.load(f)
+                            metrics = np.concatenate((metrics_old, metrics), axis=0)
+                            with open(filename, "wb") as f:
+                                np.save(f, metrics)
+
+                        # NOTE - other things to do before breaking the loop? Maybe the plot?
+                        break
+                if loss_test < loss_test_old:
+                    early_stopping_counter = 0
+
 
 
             t5 = datetime.datetime.now()
@@ -961,6 +1002,8 @@ class SET_MLP:
         return accuracy, activations
 
 
+
+
 if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
@@ -968,12 +1011,6 @@ if __name__ == "__main__":
     setup_logger(args)
     print_and_log(args)
     print("*******************************************************")
-    # print_and_log(torch.cuda.is_available())
-    # print_and_log(torch.cuda.device_count())
-    # use_cuda = not args.no_cuda and torch.cuda.is_available()
-    # device = torch.device("cuda" if use_cuda else "cpu")
-    # print("device", device)
-    # print("*******************************************************")
     sum_training_time = 0
     accuracies = []
     runs = args.runs
@@ -983,9 +1020,6 @@ if __name__ == "__main__":
     no_testing_samples = 10000  # max 10000 for Fashion MNIST
     # set model parameters
     no_hidden_neurons_layer = args.nhidden
-    # sparsity_level = args.sparsity
-    # erdos renyi formula for sparsity level
-    # 
 
     epsilon = args.epsilon  # set the sparsity level
     zeta = args.zeta # in [0..1]. It gives the percentage of unimportant connections which are removed and replaced with random ones after every epoch
@@ -1008,6 +1042,7 @@ if __name__ == "__main__":
 
     for i in range(runs):
         print(args.data)
+        print(i)
         if args.data == 'FashionMnist':
             x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
         elif args.data == 'mnist':
@@ -1036,10 +1071,7 @@ if __name__ == "__main__":
                           (AlternatedLeftReLU(-allrelu_slope), Softmax), 
                           input_pruning=args.input_pruning,
                           importance_pruning=args.importance_pruning,
-                          epsilon=epsilon) # One-layer version
-        # set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, no_hidden_neurons_layer, no_hidden_neurons_layer, y_train.shape[1]),
-        #                   (AlternatedLeftReLU(-allrelu_slope), AlternatedLeftReLU(allrelu_slope), AlternatedLeftReLU(-allrelu_slope), Softmax), 
-        #                    epsilon=epsilon) # Three-layer version                
+                          epsilon=epsilon) # One-layer version              
 
 
         start_time = time.time()
@@ -1083,12 +1115,8 @@ if __name__ == "__main__":
         accuracy, _ = set_mlp.predict(x_test, y_test, batch_size=100)
         # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
         selected_features, importances = select_input_neurons(copy.deepcopy(set_mlp.w[1]), args.K)
-        # print(set_mlp.w[1])
-        # print(f"The choosing of the {args.K} most important weights took {time.time() - start_time} seconds")
-        
-        # Print how many neurons in the input layer have a connection
-        # print(f"The number of neurons in the input layer with a connection is: {np.count_nonzero(set_mlp.w[1].sum(axis=1))}")
-        # Print which neurons have a connection
+        # evaluate FS using the selected features
+        accuracy_topk = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
 
         # print(f" The selected features are {selected_features}")
         selected_features_for_eval = pd.DataFrame(selected_features)
@@ -1113,19 +1141,8 @@ if __name__ == "__main__":
         with open(importances_path, 'w') as f:
             f.write(importances_for_eval)
 
-        # change x_train and x_test to only have the selected features
-        # print(selected_features)
-        x_train_new = np.squeeze(x_train[:, selected_features])
-        x_test_new = np.squeeze(x_test[:, selected_features])
-        # change y_train and y_test from one-hot to single label
-        y_train = np.argmax(y_train, axis=1)
-        y_test = np.argmax(y_test, axis=1)
-        
-        # time the tesitng
         start_time = time.time()
-        accuracy_topk = round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
         print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
-        print(f"The testing of the {args.K} most important weights took {time.time() - start_time} seconds")
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
         accuracies.append(accuracy_topk)
         print_and_log(accuracy_topk)
