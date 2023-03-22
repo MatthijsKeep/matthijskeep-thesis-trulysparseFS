@@ -360,8 +360,16 @@ class SET_MLP:
                 k = j * batch_size
                 l = (j + 1) * batch_size
                 z, a, masks = self._feed_forward(x_[k:l], True)
-
+                print("Before backk prop")
                 self._back_prop(z, a, masks,  y_[k:l])
+            
+            # TODO - no work yet?
+            # do remaining data if batch size does not divide the data
+            l = (x.shape[0] // batch_size) * batch_size
+            if x.shape[0] % batch_size != 0:
+                print(f"{l} on line 368")
+                z, a, masks = self._feed_forward(x_[l:], True)
+                self._back_prop(z, a, masks, y_[l:])
 
             t2 = datetime.datetime.now()
 
@@ -586,19 +594,28 @@ class SET_MLP:
         :return: (flt) Classification accuracy
         :return: (array) A 2D array of shape (n_cases, n_classes).
         """
+        print("X_test shape", x_test.shape[0])
         activations = np.zeros((y_test.shape[0], y_test.shape[1]))
         for j in range(x_test.shape[0] // batch_size):
+            # print("Batch", j, "of", x_test.shape[0] // batch_size)
             k = j * batch_size
             l = (j + 1) * batch_size
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
+            print("Number of zeroes in activations", np.sum(activations == 0))
+        
+        # last batch
+        # calculate j
+        j = x_test.shape[0] // batch_size
+        k = (j + 1) * batch_size
+        _, a_test, _ = self._feed_forward(x_test[k:], drop=False)
+        activations[k:] = a_test[self.n_layers]
+
+        # print the amount of zeroes in activations
+        print("Number of zeroes in activations", np.sum(activations == 0))
+
+
         accuracy = compute_accuracy(activations, y_test)
-        # add the remaining test cases (after the loop above has run j times)
-        if x_test.shape[0] % batch_size != 0:
-            k = j * batch_size
-            l = x_test.shape[0]
-            _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
-            activations[k:l] = a_test[self.n_layers]
         return accuracy, activations
 
 
@@ -644,6 +661,14 @@ if __name__ == "__main__":
             x_train, y_train, x_test, y_test = load_isolet()
         elif data == 'madelon':
             x_train, y_train, x_test, y_test = load_madelon_data()
+        elif data == 'har':
+            x_train, y_train, x_test, y_test = load_har()
+        elif data == 'smk':
+            x_train, y_train, x_test, y_test = load_smk()
+        elif data == 'gla':
+            x_train, y_train, x_test, y_test = load_gla()
+        else:
+            raise ValueError('Unknown dataset')
 
         np.random.seed(i)
 

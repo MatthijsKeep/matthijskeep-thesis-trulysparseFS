@@ -24,7 +24,7 @@ from sklearn import preprocessing
 from torchvision import datasets, transforms
 from PIL import Image
 
-# TODO - clean up imports
+# TODO - clean up imports (remove unused ones)
 
 
 class Error(Exception):
