@@ -6,6 +6,7 @@ from keras.datasets import cifar10, mnist
 from keras.utils import np_utils
 from PIL import Image
 from scipy.io import loadmat
+from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn import datasets
@@ -456,6 +457,20 @@ def load_gla():
 
     return train_X, train_y, test_X, test_y
     
+def load_synthetic(n_samples, n_features, n_classes, n_informative, n_redundant, i):
+    """
+    Function to generate my own, high-dimensional dataset
+    """
+
+    X, y = make_classification(n_samples=n_samples, n_features=n_features, n_classes=n_classes, n_informative=n_informative, n_redundant=n_redundant)
+    # convert y to categorical
+
+    y = np_utils.to_categorical(y, n_classes)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+    print(f"shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
+    return x_train, y_train, x_test, y_test
+
 def get_mnist_dataloaders(args, validation_split=0.0):
     """Creates augmented train, validation, and test data loaders."""
     normalize = transforms.Normalize((0.1307,), (0.3081,))

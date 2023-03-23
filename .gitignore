@@ -148,3 +148,7 @@ pruning/
 .vscode/
 
 .DS_Store
+
+*.wandb
+
+wandb/
