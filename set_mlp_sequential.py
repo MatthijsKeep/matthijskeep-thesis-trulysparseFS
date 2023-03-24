@@ -42,7 +42,7 @@ from scipy.sparse import dok_matrix
 from test import svm_test # new 
 from utils.nn_functions import *
 
-from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_smk, load_gla
+from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_smk, load_gla, load_synthetic
 from wasap_sgd.train.monitor import Monitor
 
 import copy
@@ -56,6 +56,7 @@ import pandas as pd
 import shutil
 import sys
 import time
+import wandb
 
 
 if not os.path.exists('./models'): os.mkdir('./models')
@@ -250,7 +251,8 @@ def get_data(dataset):
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
     elif dataset == 'synthetic':
-        pass # TODO - add synthetic data
+        x_train, y_train, x_test, y_test = load_synthetic(n_samples=100, n_features=1000, n_classes=2, 
+                                                          n_informative=50, n_redundant=0, i=42)
     else:
         raise ValueError("Unknown dataset")
     return x_train, y_train, x_test, y_test
@@ -655,12 +657,12 @@ class SET_MLP:
                     self._back_prop(z, a, masks,  y_[k:l])
 
 
-            if self.importance_pruning and i % 10 == 0 and i > 25:
+            if self.importance_pruning and i % 5 == 0 and i > 5:
                 # print(f"Importance pruning in layer {1}, epoch {i}")
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i % 10 == 0 and i > 25:
+            if self.input_pruning and i % 5 == 0 and i > 5:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -699,26 +701,32 @@ class SET_MLP:
                 print(f"Testing time: {t4 - t3}; \n"
                       f"Loss train: {round(loss_train, 3)}; \n"
                       f"Loss test: {round(loss_test, 3)}; \n"
+                      f"Minimum test loss: {round(min_loss, 3)}; \n"
                       f"Accuracy test: {round(accuracy_test, 3)}; \n"
                       f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n")
                 self.testing_time += (t4 - t3).seconds
 
-                # If the loss_test does not improve for 10 epochs, stop the training
+                # If the loss_test does not improve for 25 epochs, stop the training
                 if loss_test < min_loss:
                     min_loss = loss_test
                     early_stopping_counter = 0
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter == 10:
+                    if early_stopping_counter >= epochs/5:
                         print(f"Early stopping run {run} epoch {i}")
-                        filename = f"results/metrics/metrics_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}_zeta{args.zeta}.npy"
-                        if os.path.exists(filename):
-                            with open(filename, "rb") as f:
-                                metrics_old = np.load(f)
-                            metrics = np.concatenate((metrics_old, metrics), axis=0)
-                        with open(filename, "wb") as f:
-                            np.save(f, metrics)
+                        # fill metrics with nan
+                        metrics[run, i:, :] = np.nan
+                        # if last run, save metrics
+                        if run == args.runs - 1:
+                            print(metrics[run, :, 0])
+                            filename = f"results/metrics/metrics_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}_zeta{args.zeta}.npy"
+                            if os.path.exists(filename):
+                                with open(filename, "rb") as f:
+                                    metrics_old = np.load(f)
+                                metrics = np.concatenate((metrics_old, metrics), axis=0)
+                            with open(filename, "wb") as f:
+                                np.save(f, metrics)
                         # NOTE - other things to do before breaking the loop? Maybe the plot?
                         break
 
@@ -750,17 +758,34 @@ class SET_MLP:
                 metrics = np.concatenate((metrics_old, metrics), axis=0)
             with open(filename, "wb") as f:
                 np.save(f, metrics)
+                
             self._plot_loss_from_metrics(metrics, run)
         return metrics 
 
     def _plot_loss_from_metrics(self, metrics, run):
-        # plot the train and test loss using metrics array
+        # plot the train and test loss using metrics array. Somehow it should reflect the early stopping with nan values
+        # initialize colors
+        # select the last run runs from metrics
+        print(metrics.shape)
+        metrics = metrics[-max(0, runs):, :, :]
+        print(metrics.shape)
+        colors = plt.cm.jet(np.linspace(0, 1, run+1))
+        # give each run a different color (based on i)
+        # dashed line for train loss, solid line for test loss
+        # the line should cut off/stop at the nan values
+        # no legend
+        # it should select the runs backwards from metrics (i.e. the last run should be the first one plotted, and it should only plot the last run runs)
+        for i in range(run+1):
+            print(f"Amount of nan values in run {i}: {np.count_nonzero(np.isnan(metrics[i, :, 0]))}")
+            # print(metrics[i, :, :])
+            plt.plot(metrics[i, :, 0], color=colors[i], linestyle="--", alpha=0.2)
+            plt.plot(metrics[i, :, 1], color=colors[i], linestyle="-", alpha=0.2)
 
-        # instead of the above, plot the mean and std of the loss for each epoch (result should be shape (epochs, ))
-        mean_train_loss = np.mean(metrics[:, :, 0], axis=0)
-        mean_test_loss = np.mean(metrics[:, :, 1], axis=0)
-        std_train_loss = np.std(metrics[:, :, 0], axis=0)
-        std_test_loss = np.std(metrics[:, :, 1], axis=0)
+        # instead of the above, plot the mean and std of the loss for each epoch (result should be shape (epochs, )), but deal with the nan values
+        mean_train_loss = np.nanmean(metrics[:, :, 0], axis=0)
+        mean_test_loss = np.nanmean(metrics[:, :, 1], axis=0)
+        std_train_loss = np.nanstd(metrics[:, :, 0], axis=0)
+        std_test_loss = np.nanstd(metrics[:, :, 1], axis=0)
 
         plt.plot(mean_train_loss, label="Train loss")
         plt.plot(mean_test_loss, label="Test loss")
@@ -773,11 +798,16 @@ class SET_MLP:
         # do 20 x ticks equally spaced 
         plt.xticks(np.arange(0, args.epochs, 20))
         # Fix axis between 0 and 1
-        plt.ylim(0, 1)
+        plt.ylim(0, 2)
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.title("Train and test loss")
-        plt.savefig(f"loss_{args.data}_{args.epochs}epochs_batchupdate{args.update_batch}_runs{run+1}_{self.weight_init}_importancepruning{args.importance_pruning}_inputpruning{args.input_pruning}.png")
+        plot_filename = f"loss_{args.data}_{args.epochs}ep_bu{args.update_batch}_r{run+1}_{self.weight_init}_imp{args.importance_pruning}_inp{args.input_pruning}_z{args.zeta}.png"
+        # format to be shorter
+        plot_filename = plot_filename.replace("False", "F").replace("True", "T")
+        # replace "neuron_importance with ni"
+        plot_filename = plot_filename.replace("neuron_importance", "ni")
+        plt.savefig(plot_filename)
 
         return metrics
 
@@ -1022,6 +1052,8 @@ if __name__ == "__main__":
     no_training_samples = 50000  # max 60000 for Fashion MNIST
     no_testing_samples = 10000  # max 10000 for Fashion MNIST
 
+
+        
     # set model parameters
     no_hidden_neurons_layer = args.nhidden
 
@@ -1051,13 +1083,12 @@ if __name__ == "__main__":
         np.random.seed(i)
         
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
-
+        print(x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1])
         set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
                           (AlternatedLeftReLU(-allrelu_slope), Softmax), 
                           input_pruning=args.input_pruning,
                           importance_pruning=args.importance_pruning,
                           epsilon=epsilon) # One-layer version              
-
 
         start_time = time.time()
         

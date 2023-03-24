@@ -215,10 +215,10 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     x_train_new = np.squeeze(x_train[:, selected_features])
     x_test_new = np.squeeze(x_test[:, selected_features])
     # change y_train and y_test from one-hot to single label
-    y_train = np.argmax(y_train, axis=1)
-    y_test = np.argmax(y_test, axis=1)
+    y_train_new = np.argmax(y_train, axis=1)
+    y_test_new = np.argmax(y_test, axis=1)
 
-    return round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
+    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
 
 # TODO - ship this function into load_data
 def get_data(dataset):
@@ -253,7 +253,7 @@ def get_data(dataset):
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
     elif dataset == 'synthetic':
-        x_train, y_train, x_test, y_test = load_synthetic(n_samples=200, n_features=1000, n_classes=2, 
+        x_train, y_train, x_test, y_test = load_synthetic(n_samples=400, n_features=1000, n_classes=2, 
                                                           n_informative=50, n_redundant=0, i=42)
     else:
         raise ValueError("Unknown dataset")
@@ -361,7 +361,6 @@ class SET_MLP:
         lamda = self.lamda
         temp = np.array(copy.deepcopy(self.input_sum)).reshape(-1)
         
-        
         # update the layer importances for the input layer
         self.layer_importances[1] = self.layer_importances[1] * lamda + temp * (1 - lamda) # NOTE (Matthijs): Only update input layer for now
         # updating the layer importances for the hidden layers
@@ -371,13 +370,7 @@ class SET_MLP:
                 temp2 = np.array(np.sum(np.abs(copy.deepcopy(self.w[i])), axis=1)).reshape(-1)
                 # print(temp2.shape) # should be (nhidden, ), thus 200, for now
                 self.layer_importances[i] = self.layer_importances[i] * lamda + temp2 * (1 - lamda)
-            # Print summary statistics for the hidden layer importance
-            # print(f"Layer {i} importance summary statistics:")
-            # print(f"Mean: {np.mean(self.layer_importances[i])}")
-            # print(f"Median: {np.median(self.layer_importances[i])}")
-            # print(f"Max: {np.max(self.layer_importances[i])}")
-            # print(f"Min: {np.min(self.layer_importances[i])}")
-            # print(f"Std: {np.std(self.layer_importances[i])}")
+
 
 
         # print(f"Updating the layer importances took {round(time.time() - start_time, 2)} seconds")
@@ -490,7 +483,7 @@ class SET_MLP:
 
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
     
-        curr_percentile = 20 + ((epoch/self.config.epochs) * 40)
+        curr_percentile = 20 + ((epoch/self.config.epochs) * 70)
         t = np.percentile(sum_incoming_weights, curr_percentile)
         if t == 0:
             # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
@@ -543,7 +536,7 @@ class SET_MLP:
 
         sum_incoming_weights = np.abs(copy.deepcopy(self.w[i])).sum(axis=0)
 
-        t = np.percentile(sum_incoming_weights, self.zeta, axis=1)
+        t = np.percentile(sum_incoming_weights, 20, axis=1)
         sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
         
         # print(sum_incoming_weights)
@@ -558,9 +551,9 @@ class SET_MLP:
         self.w[i] = weights.tocsr()
         self.pdw[i] = pdw.tocsr()
 
-    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, eval_epoch, run, metrics, learning_rate=1e-3, momentum=0.9,
-            weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False, config=None
-
+    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, eval_epoch, run, metrics, 
+            learning_rate=1e-3, momentum=0.9, weight_decay=0.0002, zeta=0.3, dropoutrate=0., 
+            testing=True, save_filename="", monitor=False, config=None
             ):
         """
         Train the network.
@@ -590,6 +583,7 @@ class SET_MLP:
 
         # 1-d sum of the absolute values of the input weights
         min_loss = 1e9
+        max_accuracy_topk = 0
         maximum_accuracy = 0
         early_stopping_counter = 0
         for i in range(epochs):
@@ -665,7 +659,7 @@ class SET_MLP:
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i % 5 == 0 and i > 5:
+            if self.input_pruning and i > 2:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -713,13 +707,18 @@ class SET_MLP:
                       f"Loss test: {round(loss_test, 3)}; \n"
                       f"Minimum test loss: {round(min_loss, 3)}; \n"
                       f"Accuracy test: {round(accuracy_test, 3)}; \n"
-                      f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n")
+                      f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n"
+                      f"max_accuracy_topk: {round(max_accuracy_topk, 3)} \n")
                 self.testing_time += (t4 - t3).seconds
 
-                selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
-                accuracy_topk = evaluate_fs(x, x_test, y_true, y_test, selected_features)
-                wandb.log({"accuracy_topk": accuracy_topk,
-                           "epoch": i})
+                if i % 2 == 0:
+                    selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
+                    accuracy_topk = evaluate_fs(x, x_test, y_true, y_test, selected_features)
+                    wandb.log({"accuracy_topk": accuracy_topk,
+                               "epoch": i})
+                    if accuracy_topk > max_accuracy_topk:
+                        max_accuracy_topk = accuracy_topk
+                        early_stopping_counter = 0
 
                 # If the loss_test does not improve for 25 epochs, stop the training
                 if loss_test < min_loss:
@@ -959,7 +958,7 @@ class SET_MLP:
                 if self.weight_init == 'xavier':
                     limit = np.sqrt(6. / (float(self.dimensions[i - 1]) + float(self.dimensions[i])))
                 if self.weight_init == 'neuron_importance':
-                    # TODO: FIX
+                    # TODO: FIX using norm dist from kichler
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
                 random_vals = np.random.uniform(-limit, limit, length_random)
 
@@ -968,16 +967,12 @@ class SET_MLP:
             # NOTE (Matthijs): I think here we should add the new connections in a non-random way
             while length_random > 0:
                 if self.weight_init == 'neuron_importance':
-                    # We need to add the connections differently for the three layer types (input, hidden, output)
-                    # Check the neuron importance, bias new connections to the most important neurons
                     neuron_importance_i = self.layer_importances[i]
                     neuron_importance_j = self.layer_importances[i + 1]
-                    # make neuron importance sum to 1
                     neuron_importance_i = neuron_importance_i / np.sum(neuron_importance_i)
                     neuron_importance_j = neuron_importance_j / np.sum(neuron_importance_j)
 
                     ik = np.random.choice(self.dimensions[i - 1], size=length_random, p=neuron_importance_i).astype('int32')
-                    # also bias the neurons it connects to towards the most important neurons
                     jk = np.random.choice(self.dimensions[i], size=length_random, p=neuron_importance_j).astype('int32')
                 else:
                     ik = np.random.randint(0, self.dimensions[i - 1], size=length_random, dtype='int32')
@@ -1070,42 +1065,32 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'random',
+        'method': 'bayes',
         'metric': {
             'name': 'accuracy_topk',
             'goal': 'maximize'
         },
+        'early_terminate': {
+            'type': 'hyperband',
+            'min_iter': 5
+        },
         'parameters': {
-            'epochs': {
-                'values': [25, 50, 100, 250, 500]
-                },
-            'batch_size': {
-                'values': [8, 16, 32, 64]
-                },
             'dropout_rate': {
-                'values': np.linspace(0.1, 0.9, 9)
+                'min': 0.1,
+                'max': 0.5
                 },
-            'zeta': {
-                'values': np.linspace(0.3, 0.9, 8)
+            'zeta': { 
+                'min': 0.4,
+                'max': 0.9
                 },
             'lamda': {
-                'values': [0.75, 0.9, 0.95, 0.99]
+                'min': 0.8,
+                'max': 0.99
                 },
             'epsilon': {
-                'values': [1, 5, 10, 20, 50, 100]
-                },
-            'update_batch':{
-                'values': [True, False]
-                },
-            'importance_pruning':{
-                'values': [True, False]
-                },
-            'input_pruning':{
-                'values': [True, False]
-                },
-            'learning_rate': {
-                'values': [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
-            }
+                'min': 5,
+                'max': 25
+                }
         }
     }
 
@@ -1122,17 +1107,35 @@ if __name__ == "__main__":
             'value': args.allrelu_slope
         },
         'data':{
-            'value': "synthetic"
+            'value': "madelon"
         },
         'K': {
-            'value': args.K
+            'value': 20
         },
         'runs': {
             'value': args.runs
         },
         'eval_epoch': {
             'value': args.eval_epoch
-        }
+        },
+        'input_pruning':{
+            'value': True
+        },
+        'update_batch':{
+            'value': True
+        },
+        'learning_rate': {
+            'value': 1e-3
+        },
+        'epochs':{
+            'value': 10
+        },
+        'batch_size':{
+            'value': 32
+        },
+        'importance_pruning':{
+            'value': True
+        },
     })
 
     pprint.pprint(sweep_config)
@@ -1189,10 +1192,10 @@ if __name__ == "__main__":
             print("\nTotal training time: ", network.training_time)
             print("\nTotal testing time: ", network.testing_time)
             print("\nTotal evolution time: ", network.evolution_time)
-            sum_training_time += step_time
+            sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="fs-first-sweep")
-    wandb.agent(sweep_id, function=run_exp, count=50)
+    sweep_id = wandb.sweep(sweep_config, project="madelon-sweep-10ep")
+    wandb.agent(sweep_id, function=run_exp, count=100)
 
     wandb.finish()
