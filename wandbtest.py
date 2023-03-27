@@ -133,6 +133,9 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
         limit = np.sqrt(6. / float(n_rows))
         # TODO: We might want to initialize the weights differently (in a smart way) but I am not sure how to do it yet
 
+    if weight_init == 'zeros':
+        limit = 1e-6
+
     mask_weights = np.random.rand(n_rows, n_cols)
     prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections
 
@@ -957,6 +960,8 @@ class SET_MLP:
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
                 if self.weight_init == 'xavier':
                     limit = np.sqrt(6. / (float(self.dimensions[i - 1]) + float(self.dimensions[i])))
+                if self.weight_init == 'zeros':
+                    limit = 1e-6
                 if self.weight_init == 'neuron_importance':
                     # TODO: FIX using norm dist from kichler
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
@@ -966,7 +971,7 @@ class SET_MLP:
             # adding  (wdok[ik,jk]!=0): condition
             # NOTE (Matthijs): I think here we should add the new connections in a non-random way
             while length_random > 0:
-                if self.weight_init == 'neuron_importance':
+                if self.weight_init in ['neuron_importance', 'zeros', 'normal']:
                     neuron_importance_i = self.layer_importances[i]
                     neuron_importance_j = self.layer_importances[i + 1]
                     neuron_importance_i = neuron_importance_i / np.sum(neuron_importance_i)

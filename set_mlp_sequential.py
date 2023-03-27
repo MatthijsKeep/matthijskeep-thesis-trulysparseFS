@@ -130,6 +130,9 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
         limit = np.sqrt(6. / float(n_rows))
         # TODO: We might want to initialize the weights differently (in a smart way) but I am not sure how to do it yet
 
+    if weight_init == 'zeros':
+        limit = 1e-6
+    
     mask_weights = np.random.rand(n_rows, n_cols)
     prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections
 
@@ -956,13 +959,15 @@ class SET_MLP:
                 if self.weight_init == 'neuron_importance':
                     # TODO: FIX
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
+                if self.weight_init == 'zeros':
+                    limit = 1e-6
                 random_vals = np.random.uniform(-limit, limit, length_random)
 
 
             # adding  (wdok[ik,jk]!=0): condition
             # NOTE (Matthijs): I think here we should add the new connections in a non-random way
             while length_random > 0:
-                if self.weight_init == 'neuron_importance':
+                if self.weight_init in ['neuron_importance', 'normal', 'zeros']:
                     # We need to add the connections differently for the three layer types (input, hidden, output)
                     # Check the neuron importance, bias new connections to the most important neurons
                     neuron_importance_i = self.layer_importances[i]
@@ -1166,7 +1171,6 @@ if __name__ == "__main__":
             f.write(importances_for_eval)
 
         start_time = time.time()
-        print("\n Accuracy of the last epoch on the testing data (with all features): ", accuracy)
         print(f"Accuracy of the last epoch on the testing data (with {args.K} features): ", accuracy_topk)
         accuracies.append(accuracy_topk)
         print_and_log(accuracy_topk)

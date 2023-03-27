@@ -26,7 +26,7 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'bayes',
+        'method': 'random',
         'metric': {
             'name': 'accuracy_topk',
             'goal': 'maximize'
@@ -36,22 +36,9 @@ if __name__ == "__main__":
             'min_iter': 5
         },
         'parameters': {
-            'dropout_rate': {
-                'min': 0.1,
-                'max': 0.5
-                },
-            'zeta': { 
-                'min': 0.4,
-                'max': 0.9
-                },
-            'lamda': {
-                'min': 0.8,
-                'max': 0.99
-                },
-            'epsilon': {
-                'min': 5,
-                'max': 25
-                }
+            'weight_init':{
+                'values': ['normal', 'neuron_importance', 'zeros']
+            }
         }
     }
 
@@ -89,7 +76,7 @@ if __name__ == "__main__":
             'value': 1e-3
         },
         'epochs':{
-            'value': 10
+            'value': 100
         },
         'batch_size':{
             'value': 32
@@ -97,6 +84,21 @@ if __name__ == "__main__":
         'importance_pruning':{
             'value': True
         },
+        'epsilon':{
+            'value': 20
+        },
+        'lamda':{
+            'value': 0.9
+        },
+        'zeta':{
+            'value': 0.4
+        },
+        'dropout_rate':{
+            'value': 0.3
+        },
+        'plotting': {
+            'value': False
+        }
     })
 
     pprint.pprint(sweep_config)
@@ -114,7 +116,8 @@ if __name__ == "__main__":
                               input_pruning=config.input_pruning,
                               importance_pruning=config.importance_pruning,
                               epsilon=config.epsilon,
-                              lamda=config.lamda) # One-layer version   
+                              lamda=config.lamda,
+                              config=config) # One-layer version   
             print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
@@ -155,7 +158,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="madelon-sweep-10ep")
+    sweep_id = wandb.sweep(sweep_config, project="comparing-init")
     wandb.agent(sweep_id, function=run_exp, count=100)
 
     wandb.finish()
