@@ -213,10 +213,10 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     x_train_new = np.squeeze(x_train[:, selected_features])
     x_test_new = np.squeeze(x_test[:, selected_features])
     # change y_train and y_test from one-hot to single label
-    y_train = np.argmax(y_train, axis=1)
-    y_test = np.argmax(y_test, axis=1)
+    y_train_new = np.argmax(y_train, axis=1)
+    y_test_new = np.argmax(y_test, axis=1)
 
-    return round(svm_test(x_train_new, y_train, x_test_new, y_test), 4)
+    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
 
 # TODO - ship this function into load_data
 def get_data(dataset):
@@ -251,14 +251,14 @@ def get_data(dataset):
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
     elif dataset == 'synthetic':
-        x_train, y_train, x_test, y_test = load_synthetic(n_samples=100, n_features=1000, n_classes=2, 
+        x_train, y_train, x_test, y_test = load_synthetic(n_samples=400, n_features=1000, n_classes=2, 
                                                           n_informative=50, n_redundant=0, i=42)
     else:
         raise ValueError("Unknown dataset")
     return x_train, y_train, x_test, y_test
 
 class SET_MLP:
-    def __init__(self, dimensions, activations, input_pruning, importance_pruning, epsilon=20, weight_init='neuron_importance'):
+    def __init__(self, dimensions, activations, input_pruning, importance_pruning, lamda, epsilon=20, weight_init='neuron_importance'):
         """
         :param dimensions: (tpl/ list) Dimensions of the neural net. (input, hidden layer, output)
         :param activations: (tpl/ list) Activations functions.
@@ -487,7 +487,7 @@ class SET_MLP:
 
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
     
-        curr_percentile = 20 + ((epoch/no_training_epochs) * 40)
+        curr_percentile = 20 + ((epoch/no_training_epochs) * 70)
         t = np.percentile(sum_incoming_weights, curr_percentile)
         if t == 0:
             # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
@@ -586,6 +586,7 @@ class SET_MLP:
                                 inputLayerConnections=self.input_layer_connections)
 
         # 1-d sum of the absolute values of the input weights
+        max_accuracy_topk = 0
         min_loss = 1e9
         maximum_accuracy = 0
         early_stopping_counter = 0
@@ -662,7 +663,7 @@ class SET_MLP:
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i % 5 == 0 and i > 5:
+            if self.input_pruning and i > 2:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -703,9 +704,18 @@ class SET_MLP:
                       f"Loss test: {round(loss_test, 3)}; \n"
                       f"Minimum test loss: {round(min_loss, 3)}; \n"
                       f"Accuracy test: {round(accuracy_test, 3)}; \n"
-                      f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n")
+                      f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n"
+                      f"max_accuracy_topk: {round(max_accuracy_topk, 3)} \n")
                 self.testing_time += (t4 - t3).seconds
 
+                if i % 2 == 0:
+                    selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
+                    accuracy_topk = evaluate_fs(x, x_test, y_true, y_test, selected_features)
+                    wandb.log({"accuracy_topk": accuracy_topk,
+                               "epoch": i})
+                    if accuracy_topk > max_accuracy_topk:
+                        max_accuracy_topk = accuracy_topk
+                        early_stopping_counter = 0
                 # If the loss_test does not improve for 25 epochs, stop the training
                 if loss_test < min_loss:
                     min_loss = loss_test
@@ -1128,8 +1138,6 @@ if __name__ == "__main__":
         # select the 50 most important connections in the input layer
         # time the choosing of the weigths
         start_time = time.time()
-        accuracy, _ = set_mlp.predict(x_test, y_test, batch_size=100)
-        # print(f"The shape of the input layer weights is: {set_mlp.w[1].shape}")
         selected_features, importances = select_input_neurons(copy.deepcopy(set_mlp.w[1]), args.K)
         # evaluate FS using the selected features
         accuracy_topk = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)

@@ -43,6 +43,7 @@ from test import svm_test # new
 from utils.nn_functions import *
 
 from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_smk, load_gla, load_synthetic
+from set_mlp_sequential import SET_MLP
 from wasap_sgd.train.monitor import Monitor
 
 import copy
@@ -500,7 +501,7 @@ class SET_MLP:
         ids = np.argwhere(sum_incoming_weights == 0)
         # print("ids", ids.shape)
         # overlay the ids on a 28*28 matrix and set the values to 0
-        if args.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
+        if self.config.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
             matrix2828 = np.ones((28,28))
             matrix2828 = matrix2828.flatten()
             matrix2828[ids] = 0
@@ -576,7 +577,7 @@ class SET_MLP:
         self.zeta = zeta
         self.dropout_rate = dropoutrate
         self.save_filename = save_filename
-        if args.plotting:
+        if self.config.plotting:
             self.input_layer_connections.append(self.get_core_input_connections())
             np.savez_compressed(self.save_filename + "_input_connections.npz",
                                 inputLayerConnections=self.input_layer_connections)
@@ -732,7 +733,7 @@ class SET_MLP:
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
                         # if last run, save metrics
-                        if run == args.runs - 1:
+                        if run == self.config.runs - 1:
                             print(metrics[run-1, :, 0])
                             filename = f"results/metrics/metrics_{config.data}_{config.epochs}epochs_batchupdate{config.update_batch}_{self.weight_init}_importancepruning{config.importance_pruning}_inputpruning{config.input_pruning}_zeta{config.zeta}.npy"
                             if os.path.exists(filename):
@@ -741,7 +742,6 @@ class SET_MLP:
                                 metrics = np.concatenate((metrics_old, metrics), axis=0)
                             with open(filename, "wb") as f:
                                 np.save(f, metrics)
-                        # NOTE - other things to do before breaking the loop? Maybe the plot?
                         break
 
 
@@ -896,7 +896,7 @@ class SET_MLP:
         # this represents the core of the SET procedure. It removes the weights closest to zero in each layer and add new random weights
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
         # Every 50 epochs, save a plot of the distribution of the sum of weights of the input layer
-        if epoch % 50 == 0 and args.plotting:
+        if epoch % 50 == 0 and self.config.plotting:
             self._plot_input_distribution(epoch, copy.deepcopy(self.input_sum))
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
@@ -938,7 +938,7 @@ class SET_MLP:
 
             self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)), (self.dimensions[i - 1], self.dimensions[i])).tocsr()
 
-            if i == 1 and args.plotting:
+            if i == 1 and self.config.plotting:
                 print("Now saving the input layer connections")
                 self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
                                                                (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
@@ -1136,6 +1136,9 @@ if __name__ == "__main__":
         'importance_pruning':{
             'value': True
         },
+        'plotting':{
+            'value': False
+        }
     })
 
     pprint.pprint(sweep_config)

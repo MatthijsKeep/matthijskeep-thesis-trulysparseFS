@@ -466,7 +466,7 @@ def load_synthetic(n_samples, n_features, n_classes, n_informative, n_redundant,
     # convert y to categorical
 
     y = np_utils.to_categorical(y, n_classes)
-    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.6)
 
     print(f"shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
     return x_train, y_train, x_test, y_test
