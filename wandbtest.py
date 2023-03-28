@@ -288,6 +288,7 @@ class SET_MLP:
         self.zeta = None  # the fraction of the weights removed
         self.dimensions = dimensions
         self.weight_init = weight_init
+        print(f"Self.weight_init: {self.weight_init}")
         self.save_filename = ""
         self.input_layer_connections = []
         self.monitor = None
@@ -295,6 +296,7 @@ class SET_MLP:
         self.input_pruning = input_pruning
         self.lamda = lamda
         self.config = config
+        self.zero_init_limit = self.config.zero_init_param
 
         self.training_time = 0
         self.testing_time = 0
@@ -313,8 +315,10 @@ class SET_MLP:
                 self.w[i + 1] = createSparseWeights_II(self.epsilon, dimensions[i],
                                                        dimensions[i + 1])  # create sparse weight matrices
             else:
+                print("Creating sparse weights with zero_init_limit: ", self.zero_init_limit)
                 self.w[i + 1] = create_sparse_weights(self.epsilon, dimensions[i], dimensions[i + 1],
-                                                      weight_init=self.weight_init)  # create sparse weight matrices
+                                                      weight_init=self.weight_init, 
+                                                      zero_init_limit=self.zero_init_limit)  # create sparse weight matrices
             self.b[i + 1] = np.zeros(dimensions[i + 1], dtype='float32')
             self.activations[i + 2] = activations[i]
 
@@ -729,7 +733,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/5:
+                    if early_stopping_counter >= epochs/2:
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
@@ -959,7 +963,7 @@ class SET_MLP:
                 if self.weight_init == 'xavier':
                     limit = np.sqrt(6. / (float(self.dimensions[i - 1]) + float(self.dimensions[i])))
                 if self.weight_init == 'zeros':
-                    limit = 1e-6
+                    limit = self.zero_init_limit
                 if self.weight_init == 'neuron_importance':
                     # TODO: FIX using norm dist from kichler
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
@@ -967,7 +971,6 @@ class SET_MLP:
 
 
             # adding  (wdok[ik,jk]!=0): condition
-            # NOTE (Matthijs): I think here we should add the new connections in a non-random way
             while length_random > 0:
                 if self.weight_init in ['neuron_importance', 'zeros', 'normal']:
                     neuron_importance_i = self.layer_importances[i]
@@ -1160,7 +1163,8 @@ if __name__ == "__main__":
                               importance_pruning=config.importance_pruning,
                               epsilon=config.epsilon,
                               config=config,
-                              lamda=config.lamda) # One-layer version   
+                              lamda=config.lamda,
+                              weight_init=config.weight_init) # One-layer version   
             print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
