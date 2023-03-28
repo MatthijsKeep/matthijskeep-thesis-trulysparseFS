@@ -35,7 +35,6 @@
 
 from argparser import get_parser
 from numba import njit, prange
-from plot import plot_features, plot_importances
 from scipy.sparse import lil_matrix
 from scipy.sparse import coo_matrix
 from scipy.sparse import dok_matrix
@@ -120,7 +119,7 @@ def createSparseWeights_II(epsilon,noRows,noCols):
     weights = weights.tocsr()
     return weights
 
-def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
+def create_sparse_weights(epsilon, n_rows, n_cols, weight_init, zero_init_limit):
     # He uniform initialization
     if weight_init == 'he_uniform':
         limit = np.sqrt(6. / float(n_rows))
@@ -131,10 +130,9 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
 
     if weight_init == 'neuron_importance':
         limit = np.sqrt(6. / float(n_rows))
-        # TODO: We might want to initialize the weights differently (in a smart way) but I am not sure how to do it yet
 
     if weight_init == 'zeros':
-        limit = 1e-6
+        limit = zero_init_limit
 
     mask_weights = np.random.rand(n_rows, n_cols)
     prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections

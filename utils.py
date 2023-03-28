@@ -1,8 +1,8 @@
 import os
 from matplotlib import dates
 import numpy as np
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras.datasets import fashion_mnist
+# from tensorflow.keras.datasets import mnist
+# from tensorflow.keras.datasets import fashion_mnist
 import torch
 import torch.nn.functional as F
 import urllib.request as urllib2 

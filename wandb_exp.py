@@ -1,10 +1,16 @@
 import copy
 import pprint
 import time
+from typing_extensions import TypeAlias
 import wandb
-wandb.login()
+
+wandb.login(key="91381d9442817977bd94e5b7ebe345cbbe49fd6f")
 
 import numpy as np
+
+import sys, os
+
+sys.path.append(os.getcwd())
 
 from argparser import get_parser
 from wandbtest import SET_MLP, get_data, setup_logger, print_and_log, AlternatedLeftReLU, Softmax, CrossEntropy, select_input_neurons, evaluate_fs
@@ -30,10 +36,6 @@ if __name__ == "__main__":
         'metric': {
             'name': 'accuracy_topk',
             'goal': 'maximize'
-        },
-        'early_terminate': {
-            'type': 'hyperband',
-            'min_iter': 5
         },
         'parameters': {
             'weight_init':{
@@ -98,6 +100,9 @@ if __name__ == "__main__":
         },
         'plotting': {
             'value': False
+        },
+        'zero_init_param':{
+            'value': 1e-4
         }
     })
 
@@ -117,6 +122,7 @@ if __name__ == "__main__":
                               importance_pruning=config.importance_pruning,
                               epsilon=config.epsilon,
                               lamda=config.lamda,
+                              weight_init=config.weight_init,
                               config=config) # One-layer version   
             print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
             metrics = np.zeros((config.runs, config.epochs, 4))

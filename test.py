@@ -1,5 +1,5 @@
 from sklearn import svm
-from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data
+# from utils.load_data import load_fashion_mnist_data, load_cifar10_data, load_madelon_data, load_mnist_data
 
 import json
 import matplotlib.pyplot as plt
