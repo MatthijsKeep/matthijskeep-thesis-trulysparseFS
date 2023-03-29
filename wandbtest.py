@@ -223,7 +223,7 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
 
 # TODO - ship this function into load_data
-def get_data(dataset):
+def get_data(dataset, **kwargs):
     """
     Function to load the data from the dataset.
 
@@ -255,8 +255,15 @@ def get_data(dataset):
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
     elif dataset == 'synthetic':
-        x_train, y_train, x_test, y_test = load_synthetic(n_samples=400, n_features=1000, n_classes=2, 
-                                                          n_informative=50, n_redundant=0, i=42)
+        
+
+
+        x_train, y_train, x_test, y_test = load_synthetic(n_samples = kwargs['n_samples'],
+                                                          n_features = kwargs['n_features'],
+                                                          n_classes = kwargs['n_classes'],
+                                                          n_informative = kwargs['n_informative'],
+                                                          n_redundant = kwargs['n_redundant'],
+                                                          n_clusters_per_class = kwargs['n_clusters_per_class'],)
     else:
         raise ValueError("Unknown dataset")
     return x_train, y_train, x_test, y_test

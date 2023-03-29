@@ -4,7 +4,7 @@ import time
 from typing_extensions import TypeAlias
 import wandb
 
-wandb.login(key="91381d9442817977bd94e5b7ebe345cbbe49fd6f")
+wandb.login(key="91381d9442817977bd94e5b7ebe345cbbe49fd6f", timeout=300)
 
 import numpy as np
 
@@ -32,14 +32,26 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'random',
+        'method': 'grid',
         'metric': {
             'name': 'accuracy_topk',
             'goal': 'maximize'
         },
         'parameters': {
-            'weight_init':{
-                'values': ['normal', 'neuron_importance', 'zeros']
+            'n_features': {
+                'values': [500, 1000, 2500, 5000, 10000]
+            },
+            'n_classes': {
+                'values': [2, 5, 10, 20]
+            },
+            'n_samples': {
+                'values': [50, 100, 250, 1000, 2500]
+            },
+            'n_redundant': {
+                'values': [0, 10, 50, 100, 250]
+            },
+            'n_clusters_per_class': {
+                'values': [1, 2, 4, 8, 16, 32]
             }
         }
     }
@@ -57,10 +69,10 @@ if __name__ == "__main__":
             'value': args.allrelu_slope
         },
         'data':{
-            'value': "madelon"
+            'value': "synthetic"
         },
         'K': {
-            'value': 20
+            'value': 50
         },
         'runs': {
             'value': args.runs
@@ -103,6 +115,12 @@ if __name__ == "__main__":
         },
         'zero_init_param':{
             'value': 1e-4
+        },
+        'weight_init':{
+            'value': 'zeros'
+        },
+        'n_informative':{
+            'value': 50
         }
     })
 
@@ -114,8 +132,16 @@ if __name__ == "__main__":
         sum_training_time = 0
         with wandb.init(config=config):
             config=wandb.config
+            data_config = {
+                "n_features": config.n_features,
+                "n_classes": config.n_classes,
+                "n_samples": config.n_samples,
+                "n_informative": config.n_informative,
+                "n_redundant": config.n_redundant,
+                "n_clusters_per_class": config.n_clusters_per_class,
+            }
             np.random.seed(42)
-            x_train, y_train, x_test, y_test = get_data(config.data)
+            x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
             network = SET_MLP((x_train.shape[1], config.nhidden, y_train.shape[1]),
                               (AlternatedLeftReLU(-config.allrelu_slope), Softmax), 
                               input_pruning=config.input_pruning,
@@ -164,7 +190,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="comparing-init")
+    sweep_id = wandb.sweep(sweep_config, project="scaling-data-difficulty")
     wandb.agent(sweep_id, function=run_exp, count=100)
 
     wandb.finish()

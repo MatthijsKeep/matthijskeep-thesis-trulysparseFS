@@ -456,12 +456,18 @@ def load_gla():
 
     return train_X, train_y, test_X, test_y
     
-def load_synthetic(n_samples, n_features, n_classes, n_informative, n_redundant, i):
+def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informative = 50 , n_redundant = 0, i=42, n_clusters_per_class=2):
     """
     Function to generate my own, high-dimensional dataset
     """
 
-    X, y = make_classification(n_samples=n_samples, n_features=n_features, n_classes=n_classes, n_informative=n_informative, n_redundant=n_redundant)
+    X, y = make_classification(n_samples=n_samples, 
+                               n_features=n_features, 
+                               n_classes=n_classes, 
+                               n_informative=n_informative, 
+                               n_redundant=n_redundant, 
+                               random_state=i, 
+                               n_clusters_per_class=n_clusters_per_class)
     # convert y to categorical
 
     y = to_categorical(y, n_classes)
