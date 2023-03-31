@@ -314,7 +314,6 @@ def load_isolet():
 
     return train_X, train_y, test_X, test_y
 
-
 def load_har():
 
     # TODO - check if correct?
@@ -471,7 +470,7 @@ def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informati
     # convert y to categorical
 
     y = to_categorical(y, n_classes)
-    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.6)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     print(f"shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
     return x_train, y_train, x_test, y_test

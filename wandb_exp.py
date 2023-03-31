@@ -32,14 +32,14 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'grid',
+        'method': 'random',
         'metric': {
             'name': 'accuracy_topk',
             'goal': 'maximize'
         },
         'parameters': {
             'n_features': {
-                'values': [500, 1000, 2500, 5000, 10000]
+                'values': [500, 1000, 2500, 5000, 10000, 25000]
             },
             'n_classes': {
                 'values': [2, 5, 10, 20]
@@ -191,6 +191,6 @@ if __name__ == "__main__":
 
 
     sweep_id = wandb.sweep(sweep_config, project="scaling-data-difficulty")
-    wandb.agent(sweep_id, function=run_exp, count=100)
+    wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
