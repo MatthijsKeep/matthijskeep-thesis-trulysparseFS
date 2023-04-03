@@ -52,6 +52,12 @@ if __name__ == "__main__":
             },
             'n_clusters_per_class': {
                 'values': [1, 2, 4, 8, 16, 32]
+            },
+            'flex_batch_size': {
+                'values': [True, False]
+            },
+            'flex_param':{
+                'values': [8,16]
             }
         }
     }
@@ -91,9 +97,6 @@ if __name__ == "__main__":
         },
         'epochs':{
             'value': 100
-        },
-        'batch_size':{
-            'value': 32
         },
         'importance_pruning':{
             'value': True
@@ -140,8 +143,19 @@ if __name__ == "__main__":
                 "n_redundant": config.n_redundant,
                 "n_clusters_per_class": config.n_clusters_per_class,
             }
-            np.random.seed(42)
             x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
+            if config.flex_batch_size:
+                print(f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}.")
+                # if the batch size is too large, we ensure that there are at least 8 batches
+                batch_size = int(np.ceil(x_train.shape[0]/config.flex_param))
+                # round up to the nearest power of 2
+                batch_size = 2**int(np.ceil(np.log2(batch_size)))
+                print(batch_size)
+            else:
+                print(f"The batch size is fixed since flex_batch_size is {config.flex_batch_size}.")
+                batch_size = 32
+            np.random.seed(42)
+
             network = SET_MLP((x_train.shape[1], config.nhidden, y_train.shape[1]),
                               (AlternatedLeftReLU(-config.allrelu_slope), Softmax), 
                               input_pruning=config.input_pruning,
@@ -154,14 +168,14 @@ if __name__ == "__main__":
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
 
-            network.fit(
+            network.fit(    
                 x_train,
                 y_train,
                 x_test,
                 y_test,
                 loss=CrossEntropy,
                 epochs=config.epochs,
-                batch_size=config.batch_size,
+                batch_size=batch_size,
                 learning_rate=config.learning_rate,
                 momentum=config.momentum,
                 weight_decay=config.weight_decay,
@@ -174,7 +188,7 @@ if __name__ == "__main__":
                 metrics=metrics,
                 eval_epoch=config.eval_epoch,
                 config=config,
-            )        
+            )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
             accuracy_topk = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
@@ -190,7 +204,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="scaling-data-difficulty")
+    sweep_id = wandb.sweep(sweep_config, project="flex-batch-size")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

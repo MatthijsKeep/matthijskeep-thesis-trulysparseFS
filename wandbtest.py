@@ -630,7 +630,7 @@ class SET_MLP:
 
             # training
             t1 = datetime.datetime.now()
-
+            print(f"The batch size is: {batch_size}")
             for j in range(x.shape[0] // batch_size):
                 k = j * batch_size
                 l = (j + 1) * batch_size
@@ -711,6 +711,7 @@ class SET_MLP:
                     'loss_test': loss_test,
                     'accuracy_train': accuracy_train,
                     'accuracy_test': accuracy_test,
+                    'epoch': i
                 }
                 wandb.log(wb_metrics)
                 # print(metrics)
@@ -740,7 +741,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/2:
+                    if early_stopping_counter >= epochs: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
