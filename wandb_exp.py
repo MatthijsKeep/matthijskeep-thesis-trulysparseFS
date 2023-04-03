@@ -83,14 +83,14 @@ if __name__ == "__main__":
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        'input_pruning':{
-            'value': True
-        },
         'update_batch':{
             'value': True
         },
         'learning_rate': {
             'value': 1e-3
+        },
+        'input_pruning': {
+            'value': True
         },
         'epochs':{
             'value': 100
@@ -120,7 +120,10 @@ if __name__ == "__main__":
             'value': 'zeros'
         },
         'n_informative':{
-            'value': 50
+            'value': 25
+        },
+        'n_redundant':{
+            'value': 25
         }
     })
 

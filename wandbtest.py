@@ -38,6 +38,7 @@ from numba import njit, prange
 from scipy.sparse import lil_matrix
 from scipy.sparse import coo_matrix
 from scipy.sparse import dok_matrix
+from sklearn.model_selection import train_test_split
 from test import svm_test # new 
 from utils.nn_functions import *
 
@@ -219,6 +220,9 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     # change y_train and y_test from one-hot to single label
     y_train_new = np.argmax(y_train, axis=1)
     y_test_new = np.argmax(y_test, axis=1)
+
+    # take random subset of the data (20%)
+    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8)
 
     return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
 
