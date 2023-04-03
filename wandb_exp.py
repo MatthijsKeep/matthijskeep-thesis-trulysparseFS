@@ -32,32 +32,29 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'random',
+        'method': 'grid',
         'metric': {
             'name': 'accuracy_topk',
             'goal': 'maximize'
         },
         'parameters': {
             'n_features': {
-                'values': [500, 1000, 2500, 5000, 10000, 25000]
+                'values': [500, 5000, 25000]
             },
             'n_classes': {
-                'values': [2, 5, 10, 20]
+                'values': [2, 5, 20]
             },
             'n_samples': {
-                'values': [50, 100, 250, 1000, 2500]
-            },
-            'n_redundant': {
-                'values': [0, 10, 50, 100, 250]
+                'values': [50, 500, 2500]
             },
             'n_clusters_per_class': {
-                'values': [1, 2, 4, 8, 16, 32]
+                'values': [1, 4, 16]
             },
             'flex_batch_size': {
                 'values': [True, False]
             },
             'flex_param':{
-                'values': [8,16]
+                'values': [8, 16]
             }
         }
     }
