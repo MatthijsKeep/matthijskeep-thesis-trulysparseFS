@@ -38,11 +38,17 @@ if __name__ == "__main__":
             'goal': 'maximize'
         },
         'parameters': {
+            'flex_batch_size': {
+                'values': [False]
+            },
+            'flex_param':{
+                'values': [8, 16]
+            },
             'n_features': {
-                'values': [500, 5000, 25000]
+                'values': [500, 5000]
             },
             'n_classes': {
-                'values': [2, 5, 20]
+                'values': [2, 5]
             },
             'n_samples': {
                 'values': [50, 500, 2500]
@@ -50,12 +56,9 @@ if __name__ == "__main__":
             'n_clusters_per_class': {
                 'values': [1, 4, 16]
             },
-            'flex_batch_size': {
+            'input_pruning': {
                 'values': [True, False]
             },
-            'flex_param':{
-                'values': [8, 16]
-            }
         }
     }
 
@@ -72,10 +75,10 @@ if __name__ == "__main__":
             'value': args.allrelu_slope
         },
         'data':{
-            'value': "synthetic"
+            'value': "madelon"
         },
         'K': {
-            'value': 50
+            'value': 20
         },
         'runs': {
             'value': args.runs
@@ -89,9 +92,9 @@ if __name__ == "__main__":
         'learning_rate': {
             'value': 1e-3
         },
-        'input_pruning': {
-            'value': True
-        },
+        # 'input_pruning': {
+        #     'value': True
+        # },
         'epochs':{
             'value': 100
         },
@@ -204,7 +207,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="flex-batch-size")
+    sweep_id = wandb.sweep(sweep_config, project="testing-input-pruning")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

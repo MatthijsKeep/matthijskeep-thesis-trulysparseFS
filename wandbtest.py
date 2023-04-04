@@ -745,7 +745,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs: # NOTE (M): Only for debugging purposes
+                    if early_stopping_counter >= epochs/4: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
