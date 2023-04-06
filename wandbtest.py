@@ -222,7 +222,7 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     y_test_new = np.argmax(y_test, axis=1)
 
     # take random subset of the data (20%)
-    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8)
+    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
 
     return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
 
