@@ -39,6 +39,7 @@ from plot import plot_features, plot_importances
 from scipy.sparse import lil_matrix
 from scipy.sparse import coo_matrix
 from scipy.sparse import dok_matrix
+from sklearn.model_selection import train_test_split
 from test import svm_test # new 
 from utils.nn_functions import *
 
@@ -57,6 +58,8 @@ import shutil
 import sys
 import time
 import wandb
+wandb.login()
+
 
 
 if not os.path.exists('./models'): os.mkdir('./models')
@@ -213,13 +216,21 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     """
             # change x_train and x_test to only have the selected features
     # print(selected_features)
+    # check how many of the selected features overlap with the informative features, given that the informative features are the first K features
+    informative_features = np.arange(0, args.K)
+    selected_features = np.array(selected_features).flatten()
+    pct_correct = len(np.intersect1d(selected_features, informative_features)) / len(informative_features)
+    print(f"Percentage of selected features that are informative: {pct_correct}")
     x_train_new = np.squeeze(x_train[:, selected_features])
     x_test_new = np.squeeze(x_test[:, selected_features])
     # change y_train and y_test from one-hot to single label
+
     y_train_new = np.argmax(y_train, axis=1)
     y_test_new = np.argmax(y_test, axis=1)
-
-    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
+    
+    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
+    
+    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4), pct_correct
 
 # TODO - ship this function into load_data
 def get_data(dataset):
@@ -254,8 +265,8 @@ def get_data(dataset):
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
     elif dataset == 'synthetic':
-        x_train, y_train, x_test, y_test = load_synthetic(n_samples=400, n_features=1000, n_classes=2, 
-                                                          n_informative=50, n_redundant=0, i=42)
+        x_train, y_train, x_test, y_test = load_synthetic(n_samples=400, n_features=5000, n_classes=2, 
+                                                          n_informative=25, n_redundant=25, i=42)
     else:
         raise ValueError("Unknown dataset")
     return x_train, y_train, x_test, y_test
@@ -712,9 +723,10 @@ class SET_MLP:
                 self.testing_time += (t4 - t3).seconds
 
                 if i % 2 == 0:
-                    selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
-                    accuracy_topk = evaluate_fs(x, x_test, y_true, y_test, selected_features)
+                    selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), args.K)
+                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features)
                     wandb.log({"accuracy_topk": accuracy_topk,
+                               "pct_correct": pct_correct,
                                "epoch": i})
                     if accuracy_topk > max_accuracy_topk:
                         max_accuracy_topk = accuracy_topk
@@ -726,7 +738,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/5:
+                    if early_stopping_counter >= epochs/2:
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run, i:, :] = np.nan
@@ -1094,16 +1106,33 @@ if __name__ == "__main__":
     for i in range(runs):
         print(args.data)
         print(i)
-        x_train, y_train, x_test, y_test = get_data(args.data)
+        
         np.random.seed(i)
+        wandb.init(project="set-mlp",
+                   config={
+                          "dataset": "synthetic",
+                          "input_pruning": "True",
+                            "importance_pruning": "True",
+                            "epsilon": 20,
+                            "lamda": 0.9,
+                            "zeta": 0.4,
+                            "allrelu_slope": 0.6,
+                            "epochs": 100,
+                            "batch_size": 32,
+                            "lr": 0.001,
+                            "dropout_rate": 0.3,
+                   })
+        config=wandb.config
+        x_train, y_train, x_test, y_test = get_data(config.dataset)
         
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
         print(x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1])
         set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
                           (AlternatedLeftReLU(-allrelu_slope), Softmax), 
-                          input_pruning=args.input_pruning,
-                          importance_pruning=args.importance_pruning,
-                          epsilon=epsilon,
+                          input_pruning=config.input_pruning,
+                          importance_pruning=config.importance_pruning,
+                          epsilon=config.epsilon,
+                          lamda=config.lamda,
                           weight_init='zeros') # One-layer version              
 
         start_time = time.time()
@@ -1115,13 +1144,13 @@ if __name__ == "__main__":
             x_test,
             y_test,
             loss=CrossEntropy,
-            epochs=no_training_epochs,
-            batch_size=batch_size,
-            learning_rate=learning_rate,
+            epochs=config.epochs,
+            batch_size=config.batch_size,
+            learning_rate=config.lr,
             momentum=momentum,
             weight_decay=weight_decay,
-            zeta=zeta,
-            dropoutrate=dropout_rate,
+            zeta=config.zeta,
+            dropoutrate=config.dropout_rate,
             testing=True,
             save_filename=f"results/set_mlp_sequential_{no_training_samples}_training_samples_e{epsilon}_rand{str(i)}",
             monitor=True,
@@ -1146,7 +1175,7 @@ if __name__ == "__main__":
         start_time = time.time()
         selected_features, importances = select_input_neurons(copy.deepcopy(set_mlp.w[1]), args.K)
         # evaluate FS using the selected features
-        accuracy_topk = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
+        accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
 
         # print(f" The selected features are {selected_features}")
         selected_features_for_eval = pd.DataFrame(selected_features)

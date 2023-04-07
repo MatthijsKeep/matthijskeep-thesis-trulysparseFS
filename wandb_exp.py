@@ -39,7 +39,7 @@ if __name__ == "__main__":
         },
         'parameters': {
             'flex_batch_size': {
-                'values': [False]
+                'values': [True, False]
             },
             'flex_param':{
                 'values': [8, 16]
@@ -75,10 +75,10 @@ if __name__ == "__main__":
             'value': args.allrelu_slope
         },
         'data':{
-            'value': "madelon"
+            'value': "synthetic"
         },
         'K': {
-            'value': 20
+            'value': 50
         },
         'runs': {
             'value': args.runs
@@ -207,7 +207,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="testing-input-pruning")
+    sweep_id = wandb.sweep(sweep_config, project="flex-batch-size")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

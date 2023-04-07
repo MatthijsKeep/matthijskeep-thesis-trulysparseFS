@@ -5,6 +5,7 @@
 #SBATCH --partition=mcs.default.q
 #SBATCH --error=slurm/slurm-%j.err
 #SBATCH --output=slurm/slurm-%j.out
+#SBATCH --time=48:00:00
 #SBATCH --export=ALL
 #SBATCH --get-user-env
 #module load cuda10.2/toolkit/10.2.89

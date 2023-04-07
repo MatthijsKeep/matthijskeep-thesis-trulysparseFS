@@ -366,7 +366,7 @@ def plot_metrics():
         key = key.replace('epochs', 'e')
 
         print(value.shape)
-
+        # ignore the nan values
         mean_test_loss = np.mean(value[:, :, 1], axis=0)
         # print(mean_test_loss)
         std_test_loss = np.std(value[:, :, 1], axis=0)

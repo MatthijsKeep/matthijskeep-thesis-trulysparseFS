@@ -215,6 +215,11 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     """
             # change x_train and x_test to only have the selected features
     # print(selected_features)
+    # check how many of the selected features overlap with the informative features, given that the informative features are the first K features
+    informative_features = np.arange(0, args.K)
+    selected_features = np.array(selected_features).flatten()
+    pct_correct = len(np.intersect1d(selected_features, informative_features)) / len(informative_features)
+    print(f"Percentage of selected features that are informative: {pct_correct}")
     x_train_new = np.squeeze(x_train[:, selected_features])
     x_test_new = np.squeeze(x_test[:, selected_features])
     # change y_train and y_test from one-hot to single label
@@ -222,9 +227,9 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     y_test_new = np.argmax(y_test, axis=1)
 
     # take random subset of the data (20%)
-    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8)
+    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
 
-    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4)
+    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4), pct_correct
 
 # TODO - ship this function into load_data
 def get_data(dataset, **kwargs):
@@ -731,8 +736,9 @@ class SET_MLP:
 
                 if i % 2 == 0:
                     selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
-                    accuracy_topk = evaluate_fs(x, x_test, y_true, y_test, selected_features)
+                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features)
                     wandb.log({"accuracy_topk": accuracy_topk,
+                               "pct_correct": pct_correct,
                                "epoch": i})
                     if accuracy_topk > max_accuracy_topk:
                         max_accuracy_topk = accuracy_topk
@@ -1204,8 +1210,9 @@ if __name__ == "__main__":
             )        
 
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
             wandb.summary['accuracy_topk'] = accuracy_topk
+            wandb.summary['pct_correct'] = pct_correct
             wandb.log({'accuracy_topk': accuracy_topk})
 
             step_time = time.time() - start_time
