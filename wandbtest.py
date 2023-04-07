@@ -201,7 +201,7 @@ def print_and_log(msg):
     print(msg)
     logger.info(msg)
 
-def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
+def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
     """
     Function to evaluate the feature selection using the input layers' weights.
 
@@ -216,7 +216,7 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
             # change x_train and x_test to only have the selected features
     # print(selected_features)
     # check how many of the selected features overlap with the informative features, given that the informative features are the first K features
-    informative_features = np.arange(0, args.K)
+    informative_features = np.arange(0, K)
     selected_features = np.array(selected_features).flatten()
     pct_correct = len(np.intersect1d(selected_features, informative_features)) / len(informative_features)
     print(f"Percentage of selected features that are informative: {pct_correct}")
@@ -736,7 +736,8 @@ class SET_MLP:
 
                 if i % 2 == 0:
                     selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
-                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features)
+                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
+                    print(f"Out of the top {config.K} features, {pct_correct*100}% are correct")
                     wandb.log({"accuracy_topk": accuracy_topk,
                                "pct_correct": pct_correct,
                                "epoch": i})
@@ -1210,10 +1211,11 @@ if __name__ == "__main__":
             )        
 
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features, config.K)
             wandb.summary['accuracy_topk'] = accuracy_topk
             wandb.summary['pct_correct'] = pct_correct
             wandb.log({'accuracy_topk': accuracy_topk})
+            wandb.log({'pct_correct': pct_correct})
 
             step_time = time.time() - start_time
             print("\nTotal execution time: ", step_time)

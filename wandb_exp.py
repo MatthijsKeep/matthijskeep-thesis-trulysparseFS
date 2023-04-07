@@ -32,102 +32,99 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'grid',
+        'method': 'bayes',
         'metric': {
-            'name': 'accuracy_topk',
+            'name': 'pct_correct',
             'goal': 'maximize'
         },
+        'early_terminate': {
+            'type': 'hyperband',
+            'min_iter': 10
+        },
         'parameters': {
-            'flex_batch_size': {
-                'values': [True, False]
+            'learning_rate': {
+                'distribution': 'uniform',
+                'min': 1e-4,
+                'max': 1e-2
             },
-            'flex_param':{
-                'values': [8, 16]
+            'weight_decay': {
+                'distribution': 'uniform',
+                'min': 1e-4,
+                'max': 1e-2
             },
-            'n_features': {
-                'values': [500, 5000]
+            'lamda': {
+                'distribution': 'uniform',
+                'min': 0.75,
+                'max': 0.99
             },
-            'n_classes': {
-                'values': [2, 5]
+            'epsilon': {
+                'distribution': 'uniform',
+                'min': 5,
+                'max': 50
             },
-            'n_samples': {
-                'values': [50, 500, 2500]
+            'zeta':{
+                'distribution': 'uniform',
+                'min': 0.1,
+                'max': 0.9
             },
-            'n_clusters_per_class': {
-                'values': [1, 4, 16]
+            'dropout_rate':{
+                'distribution': 'uniform',
+                'min': 0.1,
+                'max': 0.9
             },
-            'input_pruning': {
-                'values': [True, False]
-            },
+            
         }
     }
 
     sweep_config["parameters"].update({
-        'nhidden': {
-            'value': 200},
-        'weight_decay': {
-            'value': args.weight_decay
-        },
-        'momentum': {
-            'value': args.momentum
-        },
         'allrelu_slope': {
             'value': args.allrelu_slope
         },
         'data':{
-            'value': "synthetic"
+            'value': "madelon"
         },
-        'K': {
-            'value': 50
-        },
-        'runs': {
-            'value': args.runs
+        'epochs':{
+            'value': 10
         },
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        'update_batch':{
-            'value': True
+        'flex_batch_size':{
+            'value': False
         },
-        'learning_rate': {
-            'value': 1e-3
-        },
-        # 'input_pruning': {
-        #     'value': True
-        # },
-        'epochs':{
-            'value': 100
+        'flex_param':{
+            'value': 16
         },
         'importance_pruning':{
             'value': True
         },
-        'epsilon':{
+        'input_pruning':{
+            'value': True
+        },
+        'K': {
             'value': 20
         },
-        'lamda':{
-            'value': 0.9
+        'momentum': {
+            'value': args.momentum
         },
-        'zeta':{
-            'value': 0.4
-        },
-        'dropout_rate':{
-            'value': 0.3
+        'nhidden': {
+            'value': 200
         },
         'plotting': {
             'value': False
         },
-        'zero_init_param':{
-            'value': 1e-4
+        'runs': {
+            'value': args.runs
+        },
+        'update_batch':{
+            'value': True
         },
         'weight_init':{
             'value': 'zeros'
         },
-        'n_informative':{
-            'value': 25
+        'zero_init_param':{
+            'value': 1e-4
         },
-        'n_redundant':{
-            'value': 25
-        }
     })
 
     pprint.pprint(sweep_config)
@@ -138,15 +135,20 @@ if __name__ == "__main__":
         sum_training_time = 0
         with wandb.init(config=config):
             config=wandb.config
-            data_config = {
-                "n_features": config.n_features,
-                "n_classes": config.n_classes,
-                "n_samples": config.n_samples,
-                "n_informative": config.n_informative,
-                "n_redundant": config.n_redundant,
-                "n_clusters_per_class": config.n_clusters_per_class,
-            }
-            x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
+            print(config)
+            if config.data == "synthetic":
+                data_config = {
+                    "n_features": config.n_features,
+                    "n_classes": config.n_classes,
+                    "n_samples": config.n_samples,
+                    "n_informative": config.n_informative,
+                    "n_redundant": config.n_redundant,
+                    "n_clusters_per_class": config.n_clusters_per_class,
+                }
+                x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
+            else:
+                x_train, y_train, x_test, y_test = get_data(config.data)
+            
             if config.flex_batch_size:
                 print(f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}.")
                 # if the batch size is too large, we ensure that there are at least 8 batches
@@ -194,8 +196,9 @@ if __name__ == "__main__":
             )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
             wandb.summary['accuracy_topk'] = accuracy_topk
+            wandb.summary['pct_correct'] = pct_correct
             wandb.log({'accuracy_topk': accuracy_topk})
             print("Accuracy top k: ", accuracy_topk)
             step_time = time.time() - start_time
@@ -207,7 +210,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="flex-batch-size")
+    sweep_id = wandb.sweep(sweep_config, project="madelon-sweep-10ep")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
