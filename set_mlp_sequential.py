@@ -225,9 +225,6 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features):
     x_test_new = np.squeeze(x_test[:, selected_features])
     # change y_train and y_test from one-hot to single label
 
-    
-    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
-
     y_train_new = np.argmax(y_train, axis=1)
     y_test_new = np.argmax(y_test, axis=1)
     
