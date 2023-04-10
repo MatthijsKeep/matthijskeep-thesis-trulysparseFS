@@ -50,14 +50,10 @@ if __name__ == "__main__":
                 'distribution': 'categorical',
                 'values': [50, 500]
             },
-            'flex_batch_size':{
+            'input_pruning':{
                 'distribution': 'categorical',
                 'values': [True, False]
-            },
-            'flex_param':{
-                'distribution': 'categorical',
-                'values': [5, 10, 25, 50]
-            },
+            }
         }
     }
 
@@ -80,18 +76,18 @@ if __name__ == "__main__":
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        # 'flex_batch_size':{
-        #     'value': False
-        # },
-        # 'flex_param':{
-        #     'value': 16
-        # },
+        'flex_batch_size':{
+            'value': False
+        },
+        'flex_param':{
+            'value': 16
+        },
         'importance_pruning':{
             'value': True
         },
-        'input_pruning':{
-            'value': True
-        },
+        # 'input_pruning':{
+        #     'value': True
+        # },
         'lamda':{
             'value': 0.95
         },
@@ -218,7 +214,7 @@ if __name__ == "__main__":
             )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features, config.K)
             wandb.summary['pct_correct'] = pct_correct
             wandb.log({'pct_correct': pct_correct})
             wandb.summary['accuracy_topk'] = accuracy_topk
@@ -234,7 +230,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="flex-batch-size")
+    sweep_id = wandb.sweep(sweep_config, project="testing-input-pruning")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
