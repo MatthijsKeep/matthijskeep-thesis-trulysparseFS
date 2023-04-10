@@ -218,8 +218,9 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
     # check how many of the selected features overlap with the informative features, given that the informative features are the first K features
     informative_features = np.arange(0, K)
     selected_features = np.array(selected_features).flatten()
-    pct_correct = len(np.intersect1d(selected_features, informative_features)) / len(informative_features)
-    print(f"Percentage of selected features that are informative: {pct_correct}")
+    print(f"Selected features: {selected_features}")
+    pct_correct = len(np.intersect1d(selected_features, informative_features))
+    print(f"selected features that are informative: {pct_correct}")
     x_train_new = np.squeeze(x_train[:, selected_features])
     x_test_new = np.squeeze(x_test[:, selected_features])
     # change y_train and y_test from one-hot to single label
@@ -676,12 +677,12 @@ class SET_MLP:
                     self._back_prop(z, a, masks,  y_[k:l])
 
 
-            if self.importance_pruning and i % 5 == 0 and i > 5:
+            if self.importance_pruning and i > 5:
                 # print(f"Importance pruning in layer {1}, epoch {i}")
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i > 2:
+            if self.input_pruning and i > 50:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -737,7 +738,7 @@ class SET_MLP:
                 if i % 2 == 0:
                     selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
                     accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
-                    print(f"Out of the top {config.K} features, {pct_correct*100}% are correct")
+                    print(f"Out of the top {config.K} features, {pct_correct} are correct")
                     wandb.log({"accuracy_topk": accuracy_topk,
                                "pct_correct": pct_correct,
                                "epoch": i})
@@ -752,7 +753,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/4: # NOTE (M): Only for debugging purposes
+                    if early_stopping_counter >= epochs/8: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
@@ -1071,162 +1072,3 @@ class SET_MLP:
 
 
 
-
-if __name__ == "__main__":
-    parser = get_parser()
-    args = parser.parse_args()
-    print("*******************************************************")
-    setup_logger(args)
-    print_and_log(args)
-    print("*******************************************************")
-    sum_training_time = 0
-    accuracies = []
-    runs = args.runs
-
-    # load data
-    no_training_samples = 50000  # max 60000 for Fashion MNIST
-    no_testing_samples = 10000  # max 10000 for Fashion MNIST
-
-        # create wandb run
-
-    sweep_config = {
-        'method': 'bayes',
-        'metric': {
-            'name': 'accuracy_topk',
-            'goal': 'maximize'
-        },
-        'early_terminate': {
-            'type': 'hyperband',
-            'min_iter': 5
-        },
-        'parameters': {
-            'dropout_rate': {
-                'min': 0.1,
-                'max': 0.5
-                },
-            'zeta': { 
-                'min': 0.4,
-                'max': 0.9
-                },
-            'lamda': {
-                'min': 0.8,
-                'max': 0.99
-                },
-            'epsilon': {
-                'min': 5,
-                'max': 25
-                }
-        }
-    }
-
-    sweep_config["parameters"].update({
-        'nhidden': {
-            'value': 200},
-        'weight_decay': {
-            'value': args.weight_decay
-        },
-        'momentum': {
-            'value': args.momentum
-        },
-        'allrelu_slope': {
-            'value': args.allrelu_slope
-        },
-        'data':{
-            'value': "madelon"
-        },
-        'K': {
-            'value': 20
-        },
-        'runs': {
-            'value': args.runs
-        },
-        'eval_epoch': {
-            'value': args.eval_epoch
-        },
-        'input_pruning':{
-            'value': True
-        },
-        'update_batch':{
-            'value': True
-        },
-        'learning_rate': {
-            'value': 1e-3
-        },
-        'epochs':{
-            'value': 10
-        },
-        'batch_size':{
-            'value': 32
-        },
-        'importance_pruning':{
-            'value': True
-        },
-        'plotting':{
-            'value': False
-        }
-    })
-
-    pprint.pprint(sweep_config)
-
-    # done to here
-
-    def run_exp(config=None):
-        sum_training_time = 0
-        with wandb.init(config=config):
-            config=wandb.config
-            np.random.seed(42)
-            x_train, y_train, x_test, y_test = get_data(config.data)
-            network = SET_MLP((x_train.shape[1], config.nhidden, y_train.shape[1]),
-                              (AlternatedLeftReLU(-config.allrelu_slope), Softmax), 
-                              input_pruning=config.input_pruning,
-                              importance_pruning=config.importance_pruning,
-                              epsilon=config.epsilon,
-                              config=config,
-                              lamda=config.lamda,
-                              weight_init=config.weight_init) # One-layer version   
-            print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
-            metrics = np.zeros((config.runs, config.epochs, 4))
-            start_time = time.time()
-
-            network.fit(
-                x_train,
-                y_train,
-                x_test,
-                y_test,
-                loss=CrossEntropy,
-                epochs=config.epochs,
-                batch_size=config.batch_size,
-                learning_rate=config.learning_rate,
-                momentum=config.momentum,
-                weight_decay=config.weight_decay,
-                zeta=config.zeta,
-                dropoutrate=config.dropout_rate,
-                testing=True,
-                save_filename=f"results/set_mlp_sequential_{x_train.shape[0]}_training_samples_e{config.epsilon}_rand1",
-                monitor=True,
-                run=1,
-                metrics=metrics,
-                eval_epoch=config.eval_epoch,
-                config=config,
-            )        
-
-            selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features, config.K)
-            wandb.summary['accuracy_topk'] = accuracy_topk
-            wandb.summary['pct_correct'] = pct_correct
-            wandb.log({'accuracy_topk': accuracy_topk})
-            wandb.log({'pct_correct': pct_correct})
-
-            step_time = time.time() - start_time
-            print("\nTotal execution time: ", step_time)
-            print("\nTotal training time: ", network.training_time)
-            print("\nTotal training time: ", network.training_time)
-            print("\nTotal testing time: ", network.testing_time)
-            print("\nTotal evolution time: ", network.evolution_time)
-            sum_training_time += step_time 
-
-
-    sweep_id = wandb.sweep(sweep_config, project="madelon-sweep-10ep")
-    wandb.agent(sweep_id, function=run_exp, count=100)
-
-    wandb.finish()

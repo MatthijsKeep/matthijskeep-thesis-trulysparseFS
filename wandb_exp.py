@@ -32,83 +32,99 @@ if __name__ == "__main__":
         # create wandb run
 
     sweep_config = {
-        'method': 'bayes',
+        'method': 'grid',
         'metric': {
             'name': 'pct_correct',
             'goal': 'maximize'
         },
         'early_terminate': {
             'type': 'hyperband',
-            'min_iter': 10
+            'min_iter': 50
         },
         'parameters': {
-            'learning_rate': {
-                'distribution': 'uniform',
-                'min': 1e-4,
-                'max': 1e-2
+            'learning_rate':{
+                'distribution': 'categorical',
+                'values': [1e-2, 1e-3]
             },
-            'weight_decay': {
-                'distribution': 'uniform',
-                'min': 1e-4,
-                'max': 1e-2
+            'n_samples':{
+                'distribution': 'categorical',
+                'values': [50, 500]
             },
-            'lamda': {
-                'distribution': 'uniform',
-                'min': 0.75,
-                'max': 0.99
+            'flex_batch_size':{
+                'distribution': 'categorical',
+                'values': [True, False]
             },
-            'epsilon': {
-                'distribution': 'uniform',
-                'min': 5,
-                'max': 50
+            'flex_param':{
+                'distribution': 'categorical',
+                'values': [5, 10, 25, 50]
             },
-            'zeta':{
-                'distribution': 'uniform',
-                'min': 0.1,
-                'max': 0.9
-            },
-            'dropout_rate':{
-                'distribution': 'uniform',
-                'min': 0.1,
-                'max': 0.9
-            },
-            
         }
     }
 
     sweep_config["parameters"].update({
         'allrelu_slope': {
-            'value': args.allrelu_slope
+            'value': 0.6
         },
         'data':{
-            'value': "madelon"
+            'value': "synthetic"
+        },
+        'dropout_rate':{
+            'value': 0.3
         },
         'epochs':{
-            'value': 10
+            'value': 100
+        },
+        'epsilon':{
+            'value': 20
         },
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        'flex_batch_size':{
-            'value': False
-        },
-        'flex_param':{
-            'value': 16
-        },
+        # 'flex_batch_size':{
+        #     'value': False
+        # },
+        # 'flex_param':{
+        #     'value': 16
+        # },
         'importance_pruning':{
             'value': True
         },
         'input_pruning':{
             'value': True
         },
+        'lamda':{
+            'value': 0.95
+        },
+        # 'learning_rate':{
+        #     'value': 1e-3
+        # },
         'K': {
             'value': 20
         },
         'momentum': {
             'value': args.momentum
         },
-        'nhidden': {
+        'nhidden':{
             'value': 200
+        },
+        'n_classes': {
+            'value': 2
+        },
+        'n_clusters_per_class': {
+            'value': 16
+        },
+        # 'n_samples': {
+        #     'value': 500
+        # },
+        'n_features': {
+            'value': 2500
+        },
+
+        'n_informative':{
+            'value': 20
+        },
+        'n_redundant':{
+            'value': 0
         },
         'plotting': {
             'value': False
@@ -119,12 +135,18 @@ if __name__ == "__main__":
         'update_batch':{
             'value': True
         },
+        'weight_decay':{
+            'value': args.weight_decay
+        },
         'weight_init':{
             'value': 'zeros'
         },
         'zero_init_param':{
             'value': 1e-4
         },
+        'zeta' : {
+            'value': 0.4
+        }
     })
 
     pprint.pprint(sweep_config)
@@ -197,9 +219,11 @@ if __name__ == "__main__":
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
             accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
-            wandb.summary['accuracy_topk'] = accuracy_topk
             wandb.summary['pct_correct'] = pct_correct
+            wandb.log({'pct_correct': pct_correct})
+            wandb.summary['accuracy_topk'] = accuracy_topk
             wandb.log({'accuracy_topk': accuracy_topk})
+            
             print("Accuracy top k: ", accuracy_topk)
             step_time = time.time() - start_time
             print("\nTotal execution time: ", step_time)
@@ -210,7 +234,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="madelon-sweep-10ep")
+    sweep_id = wandb.sweep(sweep_config, project="flex-batch-size")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
