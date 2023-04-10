@@ -467,14 +467,16 @@ def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informati
                                n_redundant=n_redundant, 
                                random_state=i, 
                                n_clusters_per_class=n_clusters_per_class,
-                               shuffle=False)
+                               shuffle=False,
+                               class_sep=1,
+                               flip_y=0.02)
     # convert y to categorical
 
     print(f"The informative features are the first {n_informative} features")
     print(f"They are given by: {X[:, :n_informative]}")
 
     y = to_categorical(y, n_classes)
-    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
 
     print(f"shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
     return x_train, y_train, x_test, y_test
