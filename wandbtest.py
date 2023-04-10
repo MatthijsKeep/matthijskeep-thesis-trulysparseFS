@@ -606,7 +606,7 @@ class SET_MLP:
 
         # 1-d sum of the absolute values of the input weights
         min_loss = 1e9
-        max_accuracy_topk = 0
+        max_pct_correct = 0
         maximum_accuracy = 0
         early_stopping_counter = 0
         for i in range(epochs):
@@ -732,7 +732,7 @@ class SET_MLP:
                       f"Minimum test loss: {round(min_loss, 3)}; \n"
                       f"Accuracy test: {round(accuracy_test, 3)}; \n"
                       f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n"
-                      f"max_accuracy_topk: {round(max_accuracy_topk, 3)} \n")
+                      f"max_pct_correct: {round(max_pct_correct, 3)} \n")
                 self.testing_time += (t4 - t3).seconds
 
                 if i % 2 == 0:
@@ -742,8 +742,8 @@ class SET_MLP:
                     wandb.log({"accuracy_topk": accuracy_topk,
                                "pct_correct": pct_correct,
                                "epoch": i})
-                    if accuracy_topk > max_accuracy_topk:
-                        max_accuracy_topk = accuracy_topk
+                    if pct_correct > max_pct_correct:
+                        max_pct_correct = pct_correct
                         early_stopping_counter = 0
 
                 # If the loss_test does not improve for 25 epochs, stop the training
@@ -753,7 +753,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/8: # NOTE (M): Only for debugging purposes
+                    if early_stopping_counter >= epochs/2: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
