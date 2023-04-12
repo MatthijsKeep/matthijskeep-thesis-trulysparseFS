@@ -468,8 +468,8 @@ def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informati
                                random_state=i, 
                                n_clusters_per_class=n_clusters_per_class,
                                shuffle=False,
-                               class_sep=1,
-                               flip_y=0.02)
+                               class_sep=2,
+                               flip_y=0.01)
     # convert y to categorical
 
     print(f"The informative features are the first {n_informative} features")
