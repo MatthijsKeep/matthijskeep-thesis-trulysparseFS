@@ -66,7 +66,7 @@ if __name__ == "__main__":
             'value': 0.6
         },
         'data':{
-            'value': "smk"
+            'value': "gla"
         },
         'dropout_rate':{
             'value': 0.3
@@ -80,12 +80,12 @@ if __name__ == "__main__":
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        'flex_batch_size':{
-            'value': False
-        },
-        'flex_param':{
-            'value': 16
-        },
+        # 'flex_batch_size':{
+        #     'value': False
+        # },
+        # 'flex_param':{
+        #     'value': 16
+        # },
         'importance_pruning':{
             'value': True
         },
@@ -234,7 +234,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="testing-smk-gla")
+    sweep_id = wandb.sweep(sweep_config, project="testing-gla")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

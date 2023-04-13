@@ -604,11 +604,12 @@ class SET_MLP:
             np.savez_compressed(self.save_filename + "_input_connections.npz",
                                 inputLayerConnections=self.input_layer_connections)
 
-        # 1-d sum of the absolute values of the input weights
         min_loss = 1e9
         max_pct_correct = 0
+        max_accuracy_topk = 0
         maximum_accuracy = 0
         early_stopping_counter = 0
+        
         for i in range(epochs):
             # Shuffle the data
             self.input_weights = copy.deepcopy(self.w[1])
@@ -744,6 +745,9 @@ class SET_MLP:
                                "epoch": i})
                     if pct_correct > max_pct_correct:
                         max_pct_correct = pct_correct
+                        early_stopping_counter = 0
+                    elif accuracy_topk > max_accuracy_topk:
+                        max_accuracy_topk = accuracy_topk
                         early_stopping_counter = 0
 
                 # If the loss_test does not improve for 25 epochs, stop the training

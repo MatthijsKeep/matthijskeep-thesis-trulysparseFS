@@ -977,7 +977,6 @@ class SET_MLP:
 
 
             # adding  (wdok[ik,jk]!=0): condition
-            # NOTE (Matthijs): I think here we should add the new connections in a non-random way
             while length_random > 0:
                 if self.weight_init in ['neuron_importance', 'normal', 'zeros']:
                     # We need to add the connections differently for the three layer types (input, hidden, output)
