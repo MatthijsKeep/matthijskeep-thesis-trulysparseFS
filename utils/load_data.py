@@ -388,8 +388,8 @@ def load_smk():
     test_y = test_y - 1
 
 
-    train_y = np_utils.to_categorical(train_y, 2)
-    test_y = np_utils.to_categorical(test_y, 2)
+    train_y = to_categorical(train_y, 2)
+    test_y = to_categorical(test_y, 2)
 
     train_X = train_X.astype('float64')
     test_X = test_X.astype('float64')
@@ -425,8 +425,8 @@ def load_gla():
     train_y = train_y - 1
     test_y = test_y - 1
 
-    train_y = np_utils.to_categorical(train_y, 4)
-    test_y = np_utils.to_categorical(test_y, 4)
+    train_y = to_categorical(train_y, 4)
+    test_y = to_categorical(test_y, 4)
 
     train_X = train_X.astype('float64')
     test_X = test_X.astype('float64')

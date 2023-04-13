@@ -34,7 +34,7 @@ if __name__ == "__main__":
     sweep_config = {
         'method': 'grid',
         'metric': {
-            'name': 'pct_correct',
+            'name': 'accuracy_topk',
             'goal': 'maximize'
         },
         'early_terminate': {
@@ -46,14 +46,18 @@ if __name__ == "__main__":
                 'distribution': 'categorical',
                 'values': [1e-2, 1e-3]
             },
-            'n_samples':{
-                'distribution': 'categorical',
-                'values': [50, 500]
-            },
             'input_pruning':{
                 'distribution': 'categorical',
                 'values': [True, False]
-            }
+            },
+            'flex_batch_size':{
+                'distribution': 'categorical',
+                'values': [True, False]
+            },
+            'flex_param':{
+                'distribution': 'categorical',
+                'values': [5, 10, 25, 50]
+            },
         }
     }
 
@@ -62,7 +66,7 @@ if __name__ == "__main__":
             'value': 0.6
         },
         'data':{
-            'value': "synthetic"
+            'value': "smk"
         },
         'dropout_rate':{
             'value': 0.3
@@ -95,7 +99,7 @@ if __name__ == "__main__":
         #     'value': 1e-3
         # },
         'K': {
-            'value': 20
+            'value': 50
         },
         'momentum': {
             'value': args.momentum
@@ -230,7 +234,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="testing-input-pruning")
+    sweep_id = wandb.sweep(sweep_config, project="testing-smk-gla")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
