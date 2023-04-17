@@ -42,6 +42,14 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
+            'flex_batch_size':{
+                'distribution': 'categorical',
+                'values': [True, False]
+            },
+            'flex_param':{
+                'distribution': 'categorical',
+                'values': [5, 10, 25, 50]
+            },
             'learning_rate':{
                 'distribution': 'categorical',
                 'values': [1e-2, 1e-3]
@@ -50,13 +58,13 @@ if __name__ == "__main__":
                 'distribution': 'categorical',
                 'values': [True, False]
             },
-            'flex_batch_size':{
+            'lamda':{
                 'distribution': 'categorical',
-                'values': [True, False]
+                'values': [0.9, 0.95, 0.99]
             },
-            'flex_param':{
+            'zeta' : {
                 'distribution': 'categorical',
-                'values': [5, 10, 25, 50]
+                'values': [0.2, 0.3, 0.4, 0.5, 0.6]
             },
         }
     }
@@ -92,15 +100,16 @@ if __name__ == "__main__":
         # 'input_pruning':{
         #     'value': True
         # },
-        'lamda':{
-            'value': 0.95
-        },
-        # 'learning_rate':{
-        #     'value': 1e-3
-        # },
         'K': {
             'value': 50
         },
+
+        # 'lamda':{
+        #     'value': 0.95
+        # },
+        # 'learning_rate':{
+        #     'value': 1e-3
+        # },
         'momentum': {
             'value': args.momentum
         },
@@ -143,10 +152,10 @@ if __name__ == "__main__":
         },
         'zero_init_param':{
             'value': 1e-4
-        },
-        'zeta' : {
-            'value': 0.4
         }
+        # 'zeta' : {
+        #     'value': 0.4
+        # }
     })
 
     pprint.pprint(sweep_config)
