@@ -13,7 +13,8 @@ import sys, os
 sys.path.append(os.getcwd())
 
 from argparser import get_parser
-from wandbtest import SET_MLP, get_data, setup_logger, print_and_log, AlternatedLeftReLU, Softmax, CrossEntropy, select_input_neurons, evaluate_fs
+from wandbtest import get_data, setup_logger, print_and_log, AlternatedLeftReLU, Softmax, CrossEntropy, select_input_neurons, evaluate_fs
+from benchmarks.set_wandb import SET_MLP
 
 if __name__ == "__main__":
     parser = get_parser()
@@ -46,10 +47,10 @@ if __name__ == "__main__":
                 'distribution': 'categorical',
                 'values': [1e-2, 1e-3]
             },
-            'input_pruning':{
-                'distribution': 'categorical',
-                'values': [True, False]
-            },
+            # 'input_pruning':{
+            #     'distribution': 'categorical',
+            #     'values': [True, False]
+            # },
             'flex_batch_size':{
                 'distribution': 'categorical',
                 'values': [True, False]
@@ -65,8 +66,11 @@ if __name__ == "__main__":
         'allrelu_slope': {
             'value': 0.6
         },
+        'batch_size':{
+            'value': 128
+        },
         'data':{
-            'value': "smk"
+            'value': "synthetic"
         },
         'dropout_rate':{
             'value': 0.3
@@ -86,9 +90,9 @@ if __name__ == "__main__":
         # 'flex_param':{
         #     'value': 16
         # },
-        'importance_pruning':{
-            'value': True
-        },
+        # 'importance_pruning':{
+        #     'value': True
+        # },
         # 'input_pruning':{
         #     'value': True
         # },
@@ -96,13 +100,13 @@ if __name__ == "__main__":
             'value': 0.95
         },
         # 'learning_rate':{
-        #     'value': 1e-3
+        #     'value': 0.01
         # },
         'K': {
-            'value': 50
+            'value': 20
         },
         'momentum': {
-            'value': args.momentum
+            'value': 0.9
         },
         'nhidden':{
             'value': 200
@@ -113,9 +117,9 @@ if __name__ == "__main__":
         'n_clusters_per_class': {
             'value': 16
         },
-        # 'n_samples': {
-        #     'value': 500
-        # },
+        'n_samples': {
+            'value': 500
+        },
         'n_features': {
             'value': 2500
         },
@@ -136,13 +140,10 @@ if __name__ == "__main__":
             'value': True
         },
         'weight_decay':{
-            'value': args.weight_decay
+            'value': 0.0002
         },
         'weight_init':{
             'value': 'zeros'
-        },
-        'zero_init_param':{
-            'value': 1e-4
         },
         'zeta' : {
             'value': 0.4
@@ -155,7 +156,7 @@ if __name__ == "__main__":
 
     def run_exp(config=None):
         sum_training_time = 0
-        with wandb.init(config=config):
+        with wandb.init(config=config, tags=['set']):
             config=wandb.config
             print(config)
             if config.data == "synthetic":
@@ -180,16 +181,12 @@ if __name__ == "__main__":
                 print(batch_size)
             else:
                 print(f"The batch size is fixed since flex_batch_size is {config.flex_batch_size}.")
-                batch_size = 32
+                batch_size = config.batch_size
             np.random.seed(42)
 
             network = SET_MLP((x_train.shape[1], config.nhidden, y_train.shape[1]),
                               (AlternatedLeftReLU(-config.allrelu_slope), Softmax), 
-                              input_pruning=config.input_pruning,
-                              importance_pruning=config.importance_pruning,
                               epsilon=config.epsilon,
-                              lamda=config.lamda,
-                              weight_init=config.weight_init,
                               config=config) # One-layer version   
             print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
             metrics = np.zeros((config.runs, config.epochs, 4))
@@ -211,9 +208,6 @@ if __name__ == "__main__":
                 testing=True,
                 save_filename=f"results/set_mlp_sequential_{x_train.shape[0]}_training_samples_e{config.epsilon}_rand1",
                 monitor=True,
-                run=1,
-                metrics=metrics,
-                eval_epoch=config.eval_epoch,
                 config=config,
             )
             print("Training finished")
@@ -227,14 +221,14 @@ if __name__ == "__main__":
             print("Accuracy top k: ", accuracy_topk)
             step_time = time.time() - start_time
             print("\nTotal execution time: ", step_time)
-            print("\nTotal training time: ", network.training_time)
-            print("\nTotal training time: ", network.training_time)
-            print("\nTotal testing time: ", network.testing_time)
-            print("\nTotal evolution time: ", network.evolution_time)
+            # print("\nTotal training time: ", network.training_time)
+            # print("\nTotal training time: ", network.training_time)
+            # print("\nTotal testing time: ", network.testing_time)
+            # print("\nTotal evolution time: ", network.evolution_time)
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="testing-smk-gla")
+    sweep_id = wandb.sweep(sweep_config, project="madelon-harder")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

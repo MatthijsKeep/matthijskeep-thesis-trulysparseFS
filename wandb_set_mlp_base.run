@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=2
+#SBATCH --partition=mcs.default.q
+#SBATCH --error=slurm/slurm-%j.err
+#SBATCH --output=slurm/slurm-%j.out
+#SBATCH --time=48:00:00
+#SBATCH --export=ALL
+#SBATCH --get-user-env
+#module load cuda10.2/toolkit/10.2.89
+
+# module load anaconda/2020.07-pth38
+
+source ~/.bashrc
+
+module load openmpi
+export MKL_NUM_THREADS=$SLURM_NTASKS
+echo "anaconda module loaded"
+
+conda config --set auto_activate_base false
+echo "conda config set"
+conda init bash
+echo "conda init bash"
+source ~/.bashrc
+echo "source bashrc"
+eval "$(conda shell.bash hook)"
+conda env list
+echo "conda env list"
+conda activate th_py38
+echo "conda activate th_py38"
+
+echo $(env)
+
+python3 benchmark_wandb_set_mlp_base.py
