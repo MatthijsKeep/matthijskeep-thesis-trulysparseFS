@@ -60,11 +60,11 @@ if __name__ == "__main__":
             },
             'lamda':{
                 'distribution': 'categorical',
-                'values': [0.95, 0.99]
+                'values': [0.9, 0.95, 0.99]
             },
             'zeta' : {
                 'distribution': 'categorical',
-                'values': [0.2, 0.4]
+                'values': [0.2, 0.4, 0.5]
             },
         }
     }
@@ -74,7 +74,7 @@ if __name__ == "__main__":
             'value': 0.6
         },
         'data':{
-            'value': "smk"
+            'value': "gla"
         },
         'dropout_rate':{
             'value': 0.3
@@ -243,7 +243,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="testing-smk-gla")
+    sweep_id = wandb.sweep(sweep_config, project="testing-GLA")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
