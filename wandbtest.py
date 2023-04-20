@@ -712,15 +712,7 @@ class SET_MLP:
                 metrics[run-1, i, 2] = accuracy_train
                 metrics[run-1, i, 3] = accuracy_test
                 print("calculated metrics")
-                wb_metrics = {
-                    'loss_train': loss_train,
-                    'loss_test': loss_test,
-                    'accuracy_train': accuracy_train,
-                    'accuracy_test': accuracy_test,
-                    'epoch': i
-                }
-                wandb.log(wb_metrics)
-                # print(metrics)
+
 
                 print(f"Testing time: {t4 - t3}; \n"
                       f"Loss train: {round(loss_train, 3)}; \n"
@@ -736,9 +728,16 @@ class SET_MLP:
                     accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
                     if config.data == "synthetic":
                         print(f"Out of the top {config.K} features, {pct_correct} are correct")
-                    wandb.log({"accuracy_topk": accuracy_topk,
-                               "pct_correct": pct_correct,
-                               "epoch": i})
+                    wb_metrics = {
+                        'loss_train': loss_train,
+                        'loss_test': loss_test,
+                        'accuracy_train': accuracy_train,
+                        'accuracy_test': accuracy_test,
+                        'epoch': i,
+                        'accuracy_topk': accuracy_topk,
+                        'pct_correct': pct_correct,
+                    }
+                    wandb.log(wb_metrics)
                     if pct_correct > max_pct_correct:
                         max_pct_correct = pct_correct
                         early_stopping_counter = 0
@@ -751,9 +750,9 @@ class SET_MLP:
                     min_loss = loss_test
                     early_stopping_counter = 0
                 print(f"Early stopping counter: {early_stopping_counter}")
-                if loss_test > min_loss:
+                if loss_test > min_loss or accuracy_topk < max_accuracy_topk or pct_correct < max_pct_correct:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/2: # NOTE (M): Only for debugging purposes
+                    if early_stopping_counter >= epochs/5: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan

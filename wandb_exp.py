@@ -42,30 +42,34 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
-            'flex_batch_size':{
-                'distribution': 'categorical',
-                'values': [True, False]
-            },
-            'flex_param':{
-                'distribution': 'categorical',
-                'values': [5, 10, 50]
-            },
+            # 'flex_batch_size':{
+            #     'distribution': 'categorical',
+            #     'values': [True, False]
+            # },
+            # 'flex_param':{
+            #     'distribution': 'categorical',
+            #     'values': [5, 10, 50]
+            # },
             # 'learning_rate':{
             #     'distribution': 'categorical',
             #     'values': [1e-2, 1e-3]
             # },
-            'input_pruning':{
+            # 'input_pruning':{
+            #     'distribution': 'categorical',
+            #     'values': [True, False]
+            # },
+            # 'lamda':{
+            #     'distribution': 'categorical',
+            #     'values': [0.95, 0.99]
+            # },
+            'n_redundant':{
                 'distribution': 'categorical',
-                'values': [True, False]
+                'values': [0, 5, 10, 25, 50, 100]
             },
-            'lamda':{
-                'distribution': 'categorical',
-                'values': [0.95, 0.99]
-            },
-            'zeta' : {
-                'distribution': 'categorical',
-                'values': [0.2, 0.4]
-            },
+            # 'zeta' : {
+            #     'distribution': 'categorical',
+            #     'values': [0.2, 0.4]
+            # },
         }
     }
 
@@ -74,7 +78,7 @@ if __name__ == "__main__":
             'value': 0.6
         },
         'data':{
-            'value': "smk"
+            'value': "synthetic"
         },
         'dropout_rate':{
             'value': 0.3
@@ -88,25 +92,24 @@ if __name__ == "__main__":
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        # 'flex_batch_size':{
-        #     'value': False
-        # },
-        # 'flex_param':{
-        #     'value': 16
-        # },
+        'flex_batch_size':{
+            'value': True
+        },
+        'flex_param':{
+            'value': 16
+        },
         'importance_pruning':{
             'value': True
         },
-        # 'input_pruning':{
-        #     'value': True
-        # },
-        'K': {
-            'value': 50
+        'input_pruning':{
+            'value': True
         },
-
-        # 'lamda':{
-        #     'value': 0.95
-        # },
+        'K': {
+            'value': 20
+        },
+        'lamda':{
+            'value': 0.99
+        },
         'learning_rate':{
             'value': 1e-2
         },
@@ -122,19 +125,18 @@ if __name__ == "__main__":
         'n_clusters_per_class': {
             'value': 16
         },
-        # 'n_samples': {
-        #     'value': 500
-        # },
+        'n_samples': {
+            'value': 500
+        },
         'n_features': {
             'value': 2500
         },
-
         'n_informative':{
             'value': 20
         },
-        'n_redundant':{
-            'value': 0
-        },
+        # 'n_redundant':{
+        #     'value': 0
+        # },
         'plotting': {
             'value': False
         },
@@ -152,10 +154,10 @@ if __name__ == "__main__":
         },
         'zero_init_param':{
             'value': 1e-4
+        },
+        'zeta' : {
+            'value': 0.4
         }
-        # 'zeta' : {
-        #     'value': 0.4
-        # }
     })
 
     pprint.pprint(sweep_config)
@@ -176,6 +178,7 @@ if __name__ == "__main__":
                     "n_redundant": config.n_redundant,
                     "n_clusters_per_class": config.n_clusters_per_class,
                 }
+                print(f"data config n_informative: {data_config['n_informative']}")
                 x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
             else:
                 x_train, y_train, x_test, y_test = get_data(config.data)
@@ -243,7 +246,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="testing-smk-gla")
+    sweep_id = wandb.sweep(sweep_config, project="scaling-redundant-above-k")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
