@@ -499,7 +499,7 @@ class SET_MLP:
         if zerow_before > self.input_sum.shape[0] - (self.config.K * 2):
             print(f"WARNING: No more neurons to prune, since {zerow_before} > {self.input_sum.shape[0] - (self.config.K * 2)}")
             self.input_pruning = False
-            # time.sleep(10) 
+
         zerow_pct = zerow_before / self.input_sum.shape[0] * 100
         print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
                 which is {zerow_pct}% of the total neurons.")
@@ -508,18 +508,11 @@ class SET_MLP:
 
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
     
-        curr_percentile = 20 + ((epoch/self.config.epochs) * 70)
+        curr_percentile = 20 + ((epoch/self.config.epochs) * 30)
         t = np.percentile(sum_incoming_weights, curr_percentile)
-        if t == 0:
-            # Find a value for the percentile such that you slowly prune the neurons over the epochs until you reach 200 neurons
-            # It should be a function of epoch/n_epochs
-            curr_percentile = 20 + ((epoch/self.config.epochs) * 70)
-            t_2 = np.percentile(sum_incoming_weights, curr_percentile)
-            # prune the weights that are lower than 
-            print(f"\n NOTE: t is 0, setting it to t_2 : {t_2}, which prunes the {curr_percentile}th percentile of the weights")
-            t = t_2
-        # print(t)
-        # breakpoint()
+        # prune the weights that are lower than 
+        print(f"\n NOTE: {t}, which prunes the {curr_percentile}th percentile of the weights")
+
         sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
         # print(sum_incoming_weights)
         ids = np.argwhere(sum_incoming_weights == 0)
@@ -741,7 +734,8 @@ class SET_MLP:
                 if i % 2 == 0:
                     selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
                     accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
-                    print(f"Out of the top {config.K} features, {pct_correct} are correct")
+                    if config.data == "synthetic":
+                        print(f"Out of the top {config.K} features, {pct_correct} are correct")
                     wandb.log({"accuracy_topk": accuracy_topk,
                                "pct_correct": pct_correct,
                                "epoch": i})
