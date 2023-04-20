@@ -201,7 +201,7 @@ def print_and_log(msg):
     print(msg)
     logger.info(msg)
 
-def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
+def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K, n_redundant):
     """
     Function to evaluate the feature selection using the input layers' weights.
 
@@ -216,7 +216,7 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
             # change x_train and x_test to only have the selected features
     # print(selected_features)
     # check how many of the selected features overlap with the informative features, given that the informative features are the first K features
-    informative_features = np.arange(0, K)
+    informative_features = np.arange(0, K+n_redundant)
     selected_features = np.array(selected_features).flatten()
     print(f"Selected features: {selected_features}")
     pct_correct = len(np.intersect1d(selected_features, informative_features))
@@ -725,7 +725,7 @@ class SET_MLP:
 
                 if i % 2 == 0:
                     selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
-                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
+                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K, config.n_redundant)
                     if config.data == "synthetic":
                         print(f"Out of the top {config.K} features, {pct_correct} are correct")
                     wb_metrics = {
