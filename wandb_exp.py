@@ -230,7 +230,7 @@ if __name__ == "__main__":
             )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features, config.K, config.n_redundant)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features, config.K)
             wandb.summary['pct_correct'] = pct_correct
             wandb.log({'pct_correct': pct_correct})
             wandb.summary['accuracy_topk'] = accuracy_topk
