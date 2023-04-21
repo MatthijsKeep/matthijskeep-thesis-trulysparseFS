@@ -179,9 +179,9 @@ if __name__ == "__main__":
                     "n_clusters_per_class": config.n_clusters_per_class,
                 }
                 print(f"data config n_informative: {data_config['n_informative']}")
-                x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
+                x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data, **data_config)
             else:
-                x_train, y_train, x_test, y_test = get_data(config.data)
+                x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
             
             if config.flex_batch_size:
                 print(f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}.")
@@ -203,7 +203,7 @@ if __name__ == "__main__":
                               lamda=config.lamda,
                               weight_init=config.weight_init,
                               config=config) # One-layer version   
-            print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
+            print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}, {x_val.shape}, {y_val.shape}")
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features, config.K)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_val, y_train, y_val, selected_features, config.K)
             wandb.summary['pct_correct'] = pct_correct
             wandb.log({'pct_correct': pct_correct})
             wandb.summary['accuracy_topk'] = accuracy_topk
