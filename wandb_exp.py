@@ -110,9 +110,9 @@ if __name__ == "__main__":
         'lamda':{
             'value': 0.99
         },
-        'learning_rate':{
-            'value': 1e-2
-        },
+        # 'learning_rate':{
+        #     'value': 1e-2
+        # },
         'momentum': {
             'value': args.momentum
         },
@@ -126,7 +126,7 @@ if __name__ == "__main__":
             'value': 16
         },
         'n_samples': {
-            'value': 500
+            'value': 600
         },
         'n_features': {
             'value': 2500
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
-            accuracy_topk, pct_correct = evaluate_fs(x_train, x_val, y_train, y_val, selected_features, config.K)
+            accuracy_topk, pct_correct = evaluate_fs(x_train, x_val, y_train, y_val, selected_features, config.K, after_training=True)
             wandb.summary['pct_correct'] = pct_correct
             wandb.log({'pct_correct': pct_correct})
             wandb.summary['accuracy_topk'] = accuracy_topk

@@ -458,13 +458,25 @@ def load_gla():
 def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informative = 50 , n_redundant = 0, i=42, n_clusters_per_class=2):
     """
     Function to generate my own, high-dimensional dataset
+
+    Args:
+        n_samples (int, optional): Number of samples. Defaults to 200.
+        n_features (int, optional): Number of features. Defaults to 500.
+        n_classes (int, optional): Number of classes. Defaults to 2.
+        n_informative (int, optional): Number of informative features. Defaults to 50.
+        n_redundant (int, optional): Number of redundant features. Defaults to 0.
+        i (int, optional): Random state. Defaults to 42.
+        n_clusters_per_class (int, optional): Number of clusters per class. Defaults to 2. (Increases the difficulty of the problem)
+
+    Returns:
+        train_X, train_y, test_X, test_y, val_X, val_y: The train, test and validation sets
     """
 
     X, y = make_classification(n_samples=n_samples, 
                                n_features=n_features, 
                                n_classes=n_classes, 
                                n_informative=n_informative, 
-                               n_redundant=n_redundant, 
+                               n_redundant=n_redundant,     
                                random_state=i, 
                                n_clusters_per_class=n_clusters_per_class,
                                shuffle=False,

@@ -201,7 +201,7 @@ def print_and_log(msg):
     print(msg)
     logger.info(msg)
 
-def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
+def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K, after_training=False):
     """
     Function to evaluate the feature selection using the input layers' weights.
 
@@ -228,10 +228,9 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
     y_test_new = np.argmax(y_test, axis=1)
 
     # take random subset of the data (20%) if the dataset is too big
-    if x_train_new.shape[0] > 10000:
+    if x_train_new.shape[0] > 5000 and not after_training:
         x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
     
-
     return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4), pct_correct
 
 # TODO - ship this function into load_data
@@ -270,15 +269,15 @@ def get_data(dataset, **kwargs):
         
 
 
-        x_train, y_train, x_test, y_test = load_synthetic(n_samples = kwargs['n_samples'],
-                                                          n_features = kwargs['n_features'],
+        x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = kwargs['n_samples'],
+                                                                        n_features = kwargs['n_features'],
                                                           n_classes = kwargs['n_classes'],
                                                           n_informative = kwargs['n_informative'],
                                                           n_redundant = kwargs['n_redundant'],
                                                           n_clusters_per_class = kwargs['n_clusters_per_class'],)
     else:
         raise ValueError("Unknown dataset")
-    return x_train, y_train, x_test, y_test
+    return x_train, y_train, x_test, y_test, x_val, y_val
 
 class SET_MLP:
     def __init__(self, dimensions, activations, input_pruning, importance_pruning, lamda, epsilon=20, weight_init='neuron_importance', config=None):
