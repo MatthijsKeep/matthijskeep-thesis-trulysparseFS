@@ -323,7 +323,7 @@ class SET_MLP:
         self.training_time = 0
         self.testing_time = 0
         self.evolution_time = 0
-        self.amount_incorrect_pruned = 0
+        self.amount_incorrectly_pruned = 0
 
         # Weights and biases are initiated by index. For a one hidden layer net you will have a w[1] and w[2]
         self.w = {}
@@ -509,22 +509,11 @@ class SET_MLP:
                 which is {zerow_pct}% of the total neurons.")
         # print the amount of neurons that have 0 incoming weights, which are important features (e.g., in the first K neurons in the synthetic data)
         if self.config.data == 'synthetic':
-            print(f"NOTE: The first {self.config.K} neurons are the important features, which should not be pruned.")
-            # find the neurons that have 0 incoming weights, in the first K neurons of the input layer
-            # print(self.input_sum[:self.config.K])
-            important_pruned = np.argwhere(self.input_sum[:self.config.K] == 0)
-            self.amount_incorrect_pruned = important_pruned.shape[0]
-            # if there are important features that are pruned, print them
-            if self.amount_incorrect_pruned > 0:
-                print(f"NOTE: The amount of important features that are pruned is: {self.amount_incorrect_pruned}")
-                print(f"The important features that are pruned are: {important_pruned}")
-            else:
-                print(f"NOTE: No important features are pruned, good.")
-
+            self._check_incorrectly_pruned()
         start_input_pruning = datetime.datetime.now()
 
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
-    
+
         curr_percentile = 20 + ((epoch/self.config.epochs) * 30)
         t = np.percentile(sum_incoming_weights, curr_percentile)
         # prune the weights that are lower than 
@@ -536,17 +525,7 @@ class SET_MLP:
         # print("ids", ids.shape)
         # overlay the ids on a 28*28 matrix and set the values to 0
         if self.config.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
-            matrix2828 = np.ones((28,28))
-            matrix2828 = matrix2828.flatten()
-            matrix2828[ids] = 0
-            matrix2828 = matrix2828.reshape((28,28))
-            # plot the matrix with the epoch number as title without interruping the training
-            plt.imshow(matrix2828, cmap='gray')
-            plt.title(f"Epoch {epoch}")
-            # save into the pruning directory
-            plt.savefig(f"pruning/{epoch}.png")
-            plt.close()
-
+            self._plot_pruned_pixels(ids, epoch)
         weights = self.w[i].tolil()
         pdw = self.pdw[i].tolil()
 
@@ -557,6 +536,35 @@ class SET_MLP:
         self.pdw[i] = pdw.tocsr()
 
         print(f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds")
+
+    def _plot_pruned_pixels(self, ids, epoch):
+        matrix2828 = np.ones((28,28))
+        matrix2828 = matrix2828.flatten()
+        matrix2828[ids] = 0
+        matrix2828 = matrix2828.reshape((28,28))
+        # plot the matrix with the epoch number as title without interruping the training
+        plt.imshow(matrix2828, cmap='gray')
+        plt.title(f"Epoch {epoch}")
+        # save into the pruning directory
+        plt.savefig(f"pruning/{epoch}.png")
+        plt.close()
+
+    def _check_incorrectly_pruned(self):
+        print(f"NOTE: The first {self.config.K} neurons are the important features, which should not be pruned.")
+        # find the neurons that have 0 incoming weights, in the first K neurons of the input layer
+        # print(self.input_sum[:self.config.K])
+        # the first n_informative+n_redundant+n_repeated neurons are the important features
+        amount_important = self.config.n_informative + self.config.n_redundant + self.config.n_repeated
+        # print(amount_important)
+        important_pruned = np.argwhere(self.input_sum[:amount_important] == 0)
+        print(important_pruned)
+        self.amount_incorrectly_pruned = len(important_pruned)
+        # if there are important features that are pruned, print them
+        if self.amount_incorrectly_pruned > 0:
+            print(f"NOTE: The amount of important features that are pruned is: {self.amount_incorrectly_pruned}")
+            print(f"The important features that are pruned are: {important_pruned}")
+        else:
+            print("NOTE: No important features are pruned, good.")
 
     def _importance_pruning(self, epoch, i):
         """

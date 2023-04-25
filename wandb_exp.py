@@ -42,6 +42,10 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
+            'dropout_rate': {
+                'distribution': 'categorical',
+                'values': [0, 0.1, 0.2, 0.3, 0.4]
+            },
             # 'flex_batch_size':{
             #     'distribution': 'categorical',
             #     'values': [True, False]
@@ -50,22 +54,22 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [5, 10, 50]
             # },
+            'input_pruning':{
+                'distribution': 'categorical',
+                'values': [True, False]
+            },
             'learning_rate':{
                 'distribution': 'categorical',
                 'values': [1e-2, 1e-3]
             },
-            # 'input_pruning':{
-            #     'distribution': 'categorical',
-            #     'values': [True, False]
-            # },
             # 'lamda':{
             #     'distribution': 'categorical',
             #     'values': [0.95, 0.99]
             # },
-            'n_redundant':{
-                'distribution': 'categorical',
-                'values': [0, 5, 10, 25, 50, 100]
-            },
+            # 'n_redundant':{
+            #     'distribution': 'categorical',
+            #     'values': [0, 5, 10, 25, 50, 100]
+            # },
             # 'zeta' : {
             #     'distribution': 'categorical',
             #     'values': [0.2, 0.4]
@@ -80,9 +84,9 @@ if __name__ == "__main__":
         'data':{
             'value': "synthetic"
         },
-        'dropout_rate':{
-            'value': 0.3
-        },
+        # 'dropout_rate':{
+        #     'value': 0.3
+        # },
         'epochs':{
             'value': 100
         },
@@ -101,9 +105,9 @@ if __name__ == "__main__":
         'importance_pruning':{
             'value': True
         },
-        'input_pruning':{
-            'value': True
-        },
+        # 'input_pruning':{
+        #     'value': True
+        # },
         'K': {
             'value': 20
         },
@@ -134,9 +138,9 @@ if __name__ == "__main__":
         'n_informative':{
             'value': 20
         },
-        # 'n_redundant':{
-        #     'value': 0
-        # },
+        'n_redundant':{
+            'value': 0
+        },
         'plotting': {
             'value': False
         },
@@ -246,7 +250,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="scaling-redundant-above-k")
+    sweep_id = wandb.sweep(sweep_config, project="set-mlp")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
