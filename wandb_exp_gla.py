@@ -42,14 +42,18 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
-            'flex_batch_size':{
+            'epochs': {
                 'distribution': 'categorical',
-                'values': [True, False]
+                'values': [250, 500]
             },
-            'flex_param':{
-                'distribution': 'categorical',
-                'values': [5, 10, 50]
-            },
+            # 'flex_batch_size':{
+            #     'distribution': 'categorical',
+            #     'values': [True, False]
+            # },
+            # 'flex_param':{
+            #     'distribution': 'categorical',
+            #     'values': [5, 10, 50]
+            # },
             # 'learning_rate':{
             #     'distribution': 'categorical',
             #     'values': [1e-2, 1e-3]
@@ -57,10 +61,6 @@ if __name__ == "__main__":
             'input_pruning':{
                 'distribution': 'categorical',
                 'values': [True, False]
-            },
-            'lamda':{
-                'distribution': 'categorical',
-                'values': [0.9, 0.95, 0.99]
             },
             'zeta' : {
                 'distribution': 'categorical',
@@ -79,18 +79,18 @@ if __name__ == "__main__":
         'dropout_rate':{
             'value': 0.3
         },
-        'epochs':{
-            'value': 100
-        },
+        # 'epochs':{
+        #     'value': 250
+        # },
         'epsilon':{
             'value': 20
         },
         'eval_epoch': {
             'value': args.eval_epoch
         },
-        # 'flex_batch_size':{
-        #     'value': False
-        # },
+        'flex_batch_size':{
+            'value': False
+        },
         # 'flex_param':{
         #     'value': 16
         # },
@@ -103,10 +103,9 @@ if __name__ == "__main__":
         'K': {
             'value': 50
         },
-
-        # 'lamda':{
-        #     'value': 0.95
-        # },
+        'lamda':{
+            'value': 0.95
+        },
         'learning_rate':{
             'value': 1e-2
         },
@@ -176,9 +175,9 @@ if __name__ == "__main__":
                     "n_redundant": config.n_redundant,
                     "n_clusters_per_class": config.n_clusters_per_class,
                 }
-                x_train, y_train, x_test, y_test = get_data(config.data, **data_config)
+                x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data, **data_config)
             else:
-                x_train, y_train, x_test, y_test = get_data(config.data)
+                x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
             
             if config.flex_batch_size:
                 print(f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}.")

@@ -253,28 +253,32 @@ def get_data(dataset, **kwargs):
         x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
     elif dataset == 'madelon':
         x_train, y_train, x_test, y_test = load_madelon_data()
+        x_val, y_val = None, None # None for now
     elif dataset == 'usps':
         x_train, y_train, x_test, y_test = load_usps()
+        x_val, y_val = None, None # None for now
     elif dataset == 'coil':
         x_train, y_train, x_test, y_test = load_coil()
+        x_val, y_val = None, None # None for now
     elif dataset == 'isolet':
         x_train, y_train, x_test, y_test = load_isolet()
+        x_val, y_val = None, None # None for now
     elif dataset == 'har':
         x_train, y_train, x_test, y_test = load_har()
+        x_val, y_val = None, None # None for now
     elif dataset == 'smk':
         x_train, y_train, x_test, y_test = load_smk()
+        x_val, y_val = None, None # None for now
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
+        x_val, y_val = None, None # None for now
     elif dataset == 'synthetic':
-        
-
-
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = kwargs['n_samples'],
                                                                         n_features = kwargs['n_features'],
-                                                          n_classes = kwargs['n_classes'],
-                                                          n_informative = kwargs['n_informative'],
-                                                          n_redundant = kwargs['n_redundant'],
-                                                          n_clusters_per_class = kwargs['n_clusters_per_class'],)
+                                                                        n_classes = kwargs['n_classes'],
+                                                                        n_informative = kwargs['n_informative'],
+                                                                        n_redundant = kwargs['n_redundant'],
+                                                                        n_clusters_per_class = kwargs['n_clusters_per_class'],)
     else:
         raise ValueError("Unknown dataset")
     return x_train, y_train, x_test, y_test, x_val, y_val
