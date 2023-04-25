@@ -319,6 +319,7 @@ class SET_MLP:
         self.training_time = 0
         self.testing_time = 0
         self.evolution_time = 0
+        self.amount_incorrect_pruned = 0
 
         # Weights and biases are initiated by index. For a one hidden layer net you will have a w[1] and w[2]
         self.w = {}
@@ -502,6 +503,19 @@ class SET_MLP:
         zerow_pct = zerow_before / self.input_sum.shape[0] * 100
         print(f"Before pruning in epoch {epoch} The amount of neurons without any incoming weights is: {zerow_before}, \
                 which is {zerow_pct}% of the total neurons.")
+        # print the amount of neurons that have 0 incoming weights, which are important features (e.g., in the first K neurons in the synthetic data)
+        if self.config.data == 'synthetic':
+            print(f"NOTE: The first {self.config.K} neurons are the important features, which should not be pruned.")
+            # find the neurons that have 0 incoming weights, in the first K neurons of the input layer
+            # print(self.input_sum[:self.config.K])
+            important_pruned = np.argwhere(self.input_sum[:self.config.K] == 0)
+            self.amount_incorrect_pruned = important_pruned.shape[0]
+            # if there are important features that are pruned, print them
+            if self.amount_incorrect_pruned > 0:
+                print(f"NOTE: The amount of important features that are pruned is: {self.amount_incorrect_pruned}")
+                print(f"The important features that are pruned are: {important_pruned}")
+            else:
+                print(f"NOTE: No important features are pruned, good.")
 
         start_input_pruning = datetime.datetime.now()
 
@@ -735,6 +749,7 @@ class SET_MLP:
                         'epoch': i,
                         'accuracy_topk': accuracy_topk,
                         'pct_correct': pct_correct,
+                        'amount_incorrectly_pruned': self.amount_incorrectly_pruned,
                     }
                     wandb.log(wb_metrics)
                     if pct_correct > max_pct_correct:
