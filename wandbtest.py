@@ -500,6 +500,8 @@ class SET_MLP:
     def _input_pruning(self, epoch, i):
         zerow_before = np.count_nonzero(self.input_sum == 0)
 
+        # TODO - Change input pruning to not be based on percentile but just on the lowest weights. Find a cutoff value and prune all weights below that value.
+
         if zerow_before > self.input_sum.shape[0] - (self.config.K * 2):
             print(f"WARNING: No more neurons to prune, since {zerow_before} > {self.input_sum.shape[0] - (self.config.K * 2)}")
             self.input_pruning = False

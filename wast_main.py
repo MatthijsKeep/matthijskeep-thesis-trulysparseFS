@@ -229,9 +229,9 @@ def main():
             print("size of the labels", get_data(args)[1])
             print(f"classes: {output_size}")
             model = models.MLP(args.data, input_size, args.nhidden, output_size).to(device)
-        if args.model == 'set-mlp': # TODO 
-            model = SET_MLP(dimensions = (input_size, args.nhidden, output_size),
-                            activations = (AlternatedLeftReLU(args.allrelu_slope), Softmax)
+        if args.model == 'set-mlp': # TODO fix
+            model = SET_MLP((dimensions = (input_size, args.nhidden, output_size),
+                            activations = (AlternatedLeftReLU(args.allrelu_slope)), Softmax),
                              args.data, input_size, args.nhidden, output_size).to(device)
         #WAST logic
         FS_core = dst_FS(model, device, args.alpha, args.density, args.hidden_IMP)
