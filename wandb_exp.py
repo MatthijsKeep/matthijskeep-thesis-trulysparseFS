@@ -250,7 +250,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="set-mlp")
+    sweep_id = wandb.sweep(sweep_config, project="test-input-pruning")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

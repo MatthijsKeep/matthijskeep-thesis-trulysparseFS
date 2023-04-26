@@ -514,14 +514,19 @@ class SET_MLP:
             self._check_incorrectly_pruned()
         start_input_pruning = datetime.datetime.now()
 
+        curr_percentile = 20 + ((epoch/self.config.epochs) * 30)
+        values = np.sort(self.input_sum)
+        last_zero_pos = find_last_pos(values, 0)
+
+        val = values[int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
+
+        print(val)
+        
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
 
-        curr_percentile = 20 + ((epoch/self.config.epochs) * 30)
-        t = np.percentile(sum_incoming_weights, curr_percentile)
-        # prune the weights that are lower than 
-        print(f"\n NOTE: {t}, which prunes the {curr_percentile}th percentile of the weights")
+        print(f"\n NOTE: {curr_percentile}, which prunes the {curr_percentile}th percentile of the weights")
 
-        sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+        sum_incoming_weights = np.where(sum_incoming_weights <= val, 0, sum_incoming_weights)
         # print(sum_incoming_weights)
         ids = np.argwhere(sum_incoming_weights == 0)
         # print("ids", ids.shape)
