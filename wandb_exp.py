@@ -143,7 +143,7 @@ if __name__ == "__main__":
         },
         'n_repeated':{
             'value': 0
-        }
+        },
         'plotting': {
             'value': False
         },
