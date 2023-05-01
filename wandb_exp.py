@@ -141,6 +141,9 @@ if __name__ == "__main__":
         'n_redundant':{
             'value': 0
         },
+        'n_repeated':{
+            'value': 0
+        }
         'plotting': {
             'value': False
         },
