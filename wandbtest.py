@@ -524,13 +524,10 @@ class SET_MLP:
         
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
 
-        print(f"\n NOTE: {curr_percentile}, which prunes the {curr_percentile}th percentile of the weights")
+        print(f"\n NOTE: {curr_percentile}, which prunes the {curr_percentile}th percentile of the weights, which are all weights smaller than {val}")
 
         sum_incoming_weights = np.where(sum_incoming_weights <= val, 0, sum_incoming_weights)
-        # print(sum_incoming_weights)
         ids = np.argwhere(sum_incoming_weights == 0)
-        # print("ids", ids.shape)
-        # overlay the ids on a 28*28 matrix and set the values to 0
         if self.config.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
             self._plot_pruned_pixels(ids, epoch)
         weights = self.w[i].tolil()
