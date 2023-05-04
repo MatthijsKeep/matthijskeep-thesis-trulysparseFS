@@ -558,6 +558,11 @@ class SET_MLP:
         # find the neurons that have 0 incoming weights, in the first K neurons of the input layer
         # print(self.input_sum[:self.config.K])
         # the first n_informative+n_redundant+n_repeated neurons are the important features
+        # if any of the three is NaN, set it to 0
+        self.config.n_informative = self.config.n_informative if self.config.n_informative is not None else 0
+        self.config.n_redundant = self.config.n_redundant if self.config.n_redundant is not None else 0
+        self.config.n_repeated = self.config.n_repeated if self.config.n_repeated is not None else 0
+
         amount_important = self.config.n_informative + self.config.n_redundant + self.config.n_repeated
         # print(amount_important)
         important_pruned = np.argwhere(self.input_sum[:amount_important] == 0)
