@@ -42,10 +42,10 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
-            'dropout_rate': {
-                'distribution': 'categorical',
-                'values': [0, 0.1, 0.2, 0.3]
-            },
+            # 'dropout_rate': {
+            #     'distribution': 'categorical',
+            #     'values': [0, 0.1, 0.2, 0.3, 0.4]
+            # },
             # 'flex_batch_size':{
             #     'distribution': 'categorical',
             #     'values': [True, False]
@@ -54,14 +54,14 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [5, 10, 50]
             # },
-            'input_pruning':{
-                'distribution': 'categorical',
-                'values': [True, False]
-            },
-            'learning_rate':{
-                'distribution': 'categorical',
-                'values': [1e-2, 1e-3]
-            },
+            # 'input_pruning':{
+            #     'distribution': 'categorical',
+            #     'values': [True, False]
+            # },
+            # 'learning_rate':{
+            #     'distribution': 'categorical',
+            #     'values': [1e-2, 1e-3]
+            # },
             # 'lamda':{
             #     'distribution': 'categorical',
             #     'values': [0.95, 0.99]
@@ -70,14 +70,14 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [0, 5, 10, 25, 50, 100]
             # },
-            'weight_decay' :{
-                'distribution': 'categorical',
-                'values': [1e-3, 1e-4, 2e-4, 1e-5, 1e-6, 1e-7, 0]
-            }
-            # 'zeta' : {
+            # 'weight_decay' :{
             #     'distribution': 'categorical',
-            #     'values': [0.2, 0.4]
+            #     'values': [1e-2, 1e-3, 1e-4, 2e-4, 1e-5, 1e-6, 1e-7, 0]
             # },
+            'zeta' : {
+                'distribution': 'categorical',
+                'values': [0.2, 0.4, 0.6]
+            },
         }
     }
 
@@ -88,9 +88,9 @@ if __name__ == "__main__":
         'data':{
             'value': "synthetic"
         },
-        # 'dropout_rate':{
-        #     'value': 0.3
-        # },
+        'dropout_rate':{
+            'value': 0.3
+        },
         'epochs':{
             'value': 100
         },
@@ -109,18 +109,18 @@ if __name__ == "__main__":
         'importance_pruning':{
             'value': True
         },
-        # 'input_pruning':{
-        #     'value': True
-        # },
+        'input_pruning':{
+            'value': False
+        },
         'K': {
             'value': 20
         },
         'lamda':{
             'value': 0.99
         },
-        # 'learning_rate':{
-        #     'value': 1e-2
-        # },
+        'learning_rate':{
+            'value': 1e-2
+        },
         'momentum': {
             'value': args.momentum
         },
@@ -157,18 +157,18 @@ if __name__ == "__main__":
         'update_batch':{
             'value': True
         },
-        # 'weight_decay':{
-        #     'value': args.weight_decay
-        # },
+        'weight_decay':{
+            'value': 1e-2
+        },
         'weight_init':{
             'value': 'zeros'
         },
         'zero_init_param':{
             'value': 1e-4
         },
-        'zeta' : {
-            'value': 0.4
-        }
+        # 'zeta' : {
+        #     'value': 0.4
+        # }
     })
 
     pprint.pprint(sweep_config)
@@ -176,10 +176,12 @@ if __name__ == "__main__":
     # done to here
 
     def run_exp(config=None):
+        print("step 1")
         sum_training_time = 0
         with wandb.init(config=config):
             config=wandb.config
             print(config)
+            print("step 2")
             if config.data == "synthetic":
                 data_config = {
                     "n_features": config.n_features,

@@ -14,8 +14,8 @@ from sklearn import datasets
 import os
 from matplotlib import dates
 import numpy as np
-# from tensorflow.keras.datasets import mnist
-# from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.datasets import fashion_mnist
 import torch
 import torch.nn.functional as F
 import urllib.request as urllib2 
@@ -64,8 +64,8 @@ def load_mnist_data(n_training_samples, n_testing_samples):
     # read MNIST data
     (x, y), (x_test, y_test) = mnist.load_data()
 
-    y = np_utils.to_categorical(y, 10)
-    y_test = np_utils.to_categorical(y_test, 10)
+    y = to_categorical(y, 10)
+    y_test = to_categorical(y_test, 10)
     x = x.astype('float32')
     x_test = x_test.astype('float32')
 
@@ -88,8 +88,10 @@ def load_mnist_data(n_training_samples, n_testing_samples):
     x_test = x_test.astype('float32')
 
     x_train, x_test = x_train.reshape(x_train.shape[0], 784), x_test.reshape(x_test.shape[0], 784)
-    print(y_test)
-    return x_train, y_train, x_test, y_test
+    # print(x_train.shape, x_test.shape)
+    # print(y_test)
+    x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.5, random_state=42)
+    return x_train, y_train, x_test, y_test, x_val, y_val
 
 
 # Fashion-MNIST is a dataset of Zalando's article images consisting of a training set of 60,000 examples and a test set of 10,000 examples.
@@ -120,8 +122,8 @@ def load_fashion_mnist_data(n_training_samples, n_testing_samples):
     x_test = (x_test - x_train_mean) / x_train_std
     
     print(y_test)
-
-    return x_train, y_train, x_test, y_test
+    x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.5, random_state=42)
+    return x_train, y_train, x_test, y_test, x_val, y_val
 
 
 # The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class.
