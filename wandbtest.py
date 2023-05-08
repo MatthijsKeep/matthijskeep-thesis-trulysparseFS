@@ -59,7 +59,7 @@ import shutil
 import sys
 import time
 import wandb
-wandb.login()
+wandb.login(key="43d952ea50348fd7b9abbc1ab7d0b787571e8918")
 
 
 if not os.path.exists('./models'): os.mkdir('./models')
@@ -212,6 +212,7 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K, after_tr
     :param y_test: (array) Correct test output
 
     :return: (float) Classification accuracy
+    :return: (float) Percentage of selected features that are informative ()
     """
             # change x_train and x_test to only have the selected features
     # print(selected_features)
@@ -248,9 +249,9 @@ def get_data(dataset, **kwargs):
     """
 
     if dataset == 'FashionMnist':
-        x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
+        x_train, y_train, x_test, y_test, x_val, y_val = load_fashion_mnist_data(50000, 10000)
     elif dataset == 'mnist':
-        x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
+        x_train, y_train, x_test, y_test, x_val, y_val = load_mnist_data(50000, 10000)
     elif dataset == 'madelon':
         x_train, y_train, x_test, y_test = load_madelon_data()
         x_val, y_val = None, None # None for now
@@ -318,7 +319,7 @@ class SET_MLP:
         self.input_pruning = input_pruning
         self.lamda = lamda
         self.config = config
-        self.zero_init_limit = self.config.zero_init_param
+        self.zero_init_limit = 1e-4
 
         self.training_time = 0
         self.testing_time = 0
@@ -362,21 +363,21 @@ class SET_MLP:
         for i in range(1, self.n_layers+1):
             # print(f"Initializing the importances for layer {i}")
             if i == 1: # Input layer
-                # print(f"{i} == 1")
-                # print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
+                print(f"{i} == 1")
+                print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
                 self.layer_importances[i] = np.zeros(copy.deepcopy(self.w[i]).shape[0], dtype='float32')
-                # print(f"The shape of the input layer is: {self.w[i].shape[0]}, which is layer {i}")
+                print(f"The shape of the input layer is: {self.w[i].shape[0]}, which is layer {i}")
             if i == self.n_layers: # Output layer
-                # print(f"{i} == {self.n_layers}")
-                # print(f"The shape of the weight matrix we are looking at is: {self.w[i-1].shape}")
+                print(f"{i} == {self.n_layers}")
+                print(f"The shape of the weight matrix we are looking at is: {self.w[i-1].shape}")
                 self.layer_importances[i] = np.zeros(copy.deepcopy(self.w[i-1]).shape[1], dtype='float32')
-                # print(f"The shape of the output layer is: {self.w[i-1].shape[1]}, which is layer {i}")
+                print(f"The shape of the output layer is: {self.w[i-1].shape[1]}, which is layer {i}")
             # for the hidden layers all neurons have the same importance
             if i not in [1, self.n_layers]: # All other layers (hidden layers)
-                # print(f"{i} not in [1, {self.n_layers}]")
-                # print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
+                print(f"{i} not in [1, {self.n_layers}]")
+                print(f"The shape of the weight matrix we are looking at is: {self.w[i].shape}")
                 self.layer_importances[i] = np.ones(copy.deepcopy(self.w[i]).shape[0], dtype='float32')
-                # print(f"The shape of the hidden layer is: {self.w[i].shape[0]}, which is layer {i}")
+                print(f"The shape of the hidden layer is: {self.w[i].shape[0]}, which is layer {i}")
 
         # print(f"The shape of the layer importances is: {self.layer_importances}")          
 
@@ -514,22 +515,20 @@ class SET_MLP:
             self._check_incorrectly_pruned()
         start_input_pruning = datetime.datetime.now()
 
-        curr_percentile = 20 + ((epoch/self.config.epochs) * 30)
+        curr_percentage = (epoch/self.config.epochs) / 100
         values = np.sort(self.input_sum)
-        last_zero_pos = find_last_pos(values, 0)
-
-        val = values[int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
+        val = values[int(len(values) * curr_percentage)]
 
         print(val)
         
         sum_incoming_weights = np.array(copy.deepcopy(self.input_sum))
 
-        print(f"\n NOTE: {curr_percentile}, which prunes the {curr_percentile}th percentile of the weights, which are all weights smaller than {val}")
+        print(f"\n NOTE: {curr_percentage}, which prunes the {curr_percentage}th percentile of the weights, which are all weights smaller than {val}")
 
         sum_incoming_weights = np.where(sum_incoming_weights <= val, 0, sum_incoming_weights)
         ids = np.argwhere(sum_incoming_weights == 0)
-        if self.config.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
-            self._plot_pruned_pixels(ids, epoch)
+        # if self.config.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
+        #     self._plot_pruned_pixels(ids, epoch)
         weights = self.w[i].tolil()
         pdw = self.pdw[i].tolil()
 
@@ -617,7 +616,11 @@ class SET_MLP:
         """
         if x.shape[0] != y_true.shape[0]:
             raise ValueError("Length of x and y arrays don't match")
+        
+        
 
+        print("After shape check")
+        print(f"X.shape {x.shape}")
         self.monitor = Monitor(save_filename=save_filename) if monitor else None
 
         # Initiate the loss object with the final activation function
@@ -634,11 +637,10 @@ class SET_MLP:
                                 inputLayerConnections=self.input_layer_connections)
 
         min_loss = 1e9
-        max_pct_correct = 0
         max_accuracy_topk = 0
         maximum_accuracy = 0
         early_stopping_counter = 0
-        
+
         for i in range(epochs):
             # Shuffle the data
             self.input_weights = copy.deepcopy(self.w[1])
@@ -712,7 +714,7 @@ class SET_MLP:
                 self._importance_pruning(epoch=i, i=1)
 
             # Input neuron pruning (on the input layer)
-            if self.input_pruning and i > 50:
+            if self.input_pruning and i > 5 and i%5 == 0:
                 # print(f"Input pruning in layer {1}, epoch {i}")
                 self._input_pruning(epoch=i, i=1)
 
@@ -732,7 +734,7 @@ class SET_MLP:
 
             # test model performance on the test data at each epoch
             # this part is useful to understand model performance and can be commented for production settings
-            
+
             if testing:
                 t3 = datetime.datetime.now()
                 accuracy_test, activations_test = self.predict(x_test, y_test)
@@ -754,7 +756,7 @@ class SET_MLP:
                       f"Minimum test loss: {round(min_loss, 3)}; \n"
                       f"Accuracy test: {round(accuracy_test, 3)}; \n"
                       f"Maximum accuracy val: {round(maximum_accuracy, 3)} \n"
-                      f"max_pct_correct: {round(max_pct_correct, 3)} \n")
+                      )
                 self.testing_time += (t4 - t3).seconds
 
                 if i % 2 == 0:
@@ -762,6 +764,19 @@ class SET_MLP:
                     accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
                     if config.data == "synthetic":
                         print(f"Out of the top {config.K} features, {pct_correct} are correct")
+                    else:
+                        print("Impossible to calculate the percentage of correct features for this dataset")
+
+                    if config.plotting == True:
+                        if config.data in ["mnist", "FashionMnist"]:
+                            # print(self.input_sum.reshape(28, 28, 1))
+                            image_array = self.input_sum.reshape(28, 28, 1)
+                            # scale to 0-255
+                            image_array = 255 * (image_array - np.min(image_array)) / (np.max(image_array) - np.min(image_array))
+                            features_plot = wandb.Image(image_array, caption="Input features")
+                    else:
+                        features_plot = None
+
                     wb_metrics = {
                         'loss_train': loss_train,
                         'loss_test': loss_test,
@@ -771,12 +786,10 @@ class SET_MLP:
                         'accuracy_topk': accuracy_topk,
                         'pct_correct': pct_correct,
                         'amount_incorrectly_pruned': self.amount_incorrectly_pruned,
+                        'features': features_plot
                     }
                     wandb.log(wb_metrics)
-                    if pct_correct > max_pct_correct:
-                        max_pct_correct = pct_correct
-                        early_stopping_counter = 0
-                    elif accuracy_topk > max_accuracy_topk:
+                    if accuracy_topk > max_accuracy_topk:
                         max_accuracy_topk = accuracy_topk
                         early_stopping_counter = 0
 
@@ -785,7 +798,7 @@ class SET_MLP:
                     min_loss = loss_test
                     early_stopping_counter = 0
                 print(f"Early stopping counter: {early_stopping_counter}")
-                if loss_test > min_loss or accuracy_topk < max_accuracy_topk or pct_correct < max_pct_correct:
+                if loss_test > min_loss or accuracy_topk < max_accuracy_topk:
                     early_stopping_counter += 1
                     if early_stopping_counter >= epochs/5: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
@@ -812,13 +825,13 @@ class SET_MLP:
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
-                    # # save performance metrics values in a file
-                    # if self.save_filename != "":
-                    #     np.savetxt(self.save_filename +".txt", metrics)
+                        # # save performance metrics values in a file
+                        # if self.save_filename != "":
+                        #     np.savetxt(self.save_filename +".txt", metrics)
 
-                    # if self.save_filename != "" and self.monitor:
-                    #     with open(self.save_filename + "_monitor.json", 'w') as file:
-                    #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
+                        # if self.save_filename != "" and self.monitor:
+                        #     with open(self.save_filename + "_monitor.json", 'w') as file:
+                        #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
 
         # Save the metrics to a file
@@ -831,57 +844,8 @@ class SET_MLP:
                 metrics = np.concatenate((metrics_old, metrics), axis=0)
             with open(filename, "wb") as f:
                 np.save(f, metrics)
-                
+
             self._plot_loss_from_metrics(metrics, run)
-        return metrics 
-
-    def _plot_loss_from_metrics(self, metrics, run):
-        # plot the train and test loss using metrics array. Somehow it should reflect the early stopping with nan values
-        # initialize colors
-        # select the last run runs from metrics
-        print(metrics.shape)
-        metrics = metrics[-max(0, runs):, :, :]
-        print(metrics.shape)
-        colors = plt.cm.jet(np.linspace(0, 1, run+1))
-        # give each run a different color (based on i)
-        # dashed line for train loss, solid line for test loss
-        # the line should cut off/stop at the nan values
-        # no legend
-        # it should select the runs backwards from metrics (i.e. the last run should be the first one plotted, and it should only plot the last run runs)
-        for i in range(run+1):
-            print(f"Amount of nan values in run {i}: {np.count_nonzero(np.isnan(metrics[i, :, 0]))}")
-            # print(metrics[i, :, :])
-            plt.plot(metrics[i, :, 0], color=colors[i], linestyle="--", alpha=0.2)
-            plt.plot(metrics[i, :, 1], color=colors[i], linestyle="-", alpha=0.2)
-
-        # instead of the above, plot the mean and std of the loss for each epoch (result should be shape (epochs, )), but deal with the nan values
-        mean_train_loss = np.nanmean(metrics[:, :, 0], axis=0)
-        mean_test_loss = np.nanmean(metrics[:, :, 1], axis=0)
-        std_train_loss = np.nanstd(metrics[:, :, 0], axis=0)
-        std_test_loss = np.nanstd(metrics[:, :, 1], axis=0)
-
-        plt.plot(mean_train_loss, label="Train loss")
-        plt.plot(mean_test_loss, label="Test loss")
-
-        plt.fill_between(range(mean_train_loss.shape[0]), mean_train_loss - std_train_loss  , mean_train_loss + std_train_loss, alpha=0.2)
-        plt.fill_between(range(mean_test_loss.shape[0]), mean_test_loss - std_test_loss, mean_test_loss + std_test_loss, alpha=0.2)
-
-        plt.legend()
-
-        # do 20 x ticks equally spaced 
-        plt.xticks(np.arange(0, self.config.epochs, 20))
-        # Fix axis between 0 and 1
-        plt.ylim(0, 2)
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.title("Train and test loss")
-        plot_filename = f"loss_{self.config.data}_{self.config.epochs}ep_bu{self.config.update_batch}_r{run+1}_{self.weight_init}_imp{self.config.importance_pruning}_inp{self.config.input_pruning}_z{self.config.zeta}.png"
-        # format to be shorter
-        plot_filename = plot_filename.replace("False", "F").replace("True", "T")
-        # replace "neuron_importance with ni"
-        plot_filename = plot_filename.replace("neuron_importance", "ni")
-        plt.savefig(plot_filename)
-
         return metrics
 
     def get_core_input_connections(self):
@@ -955,8 +919,8 @@ class SET_MLP:
         # this represents the core of the SET procedure. It removes the weights closest to zero in each layer and add new random weights
         # improved running time using numpy routines - Amarsagar Reddy Ramapuram Matavalam (amar@iastate.edu)
         # Every 50 epochs, save a plot of the distribution of the sum of weights of the input layer
-        if epoch % 50 == 0 and self.config.plotting:
-            self._plot_input_distribution(epoch, copy.deepcopy(self.input_sum))
+        # if epoch % 50 == 0 and self.config.plotting:
+        #     self._plot_input_distribution(epoch, copy.deepcopy(self.input_sum))
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
@@ -997,14 +961,14 @@ class SET_MLP:
 
             self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)), (self.dimensions[i - 1], self.dimensions[i])).tocsr()
 
-            if i == 1 and self.config.plotting:
-                print("Now saving the input layer connections")
-                self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
-                                                               (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
-                np.savez_compressed(
-                    f"{self.save_filename}_input_connections.npz",
-                    inputLayerConnections=self.input_layer_connections,
-                )
+            # if i == 1 and self.config.plotting:
+            #     print("Now saving the input layer connections")
+            #     self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
+            #                                                    (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
+            #     np.savez_compressed(
+            #         f"{self.save_filename}_input_connections.npz",
+            #         inputLayerConnections=self.input_layer_connections,
+            #     )
 
             # add new random connections # TODO: modify to a smart way of adding new connections
             keep_connections = np.size(rows_w_new)
@@ -1065,14 +1029,14 @@ class SET_MLP:
             # print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
             self.evolution_time += (t_ev_2 - t_ev_1).seconds
 
-    def _plot_input_distribution(self, epoch, values):
-        plot_time_start = time.time()
-        plt.hist(values, bins=100)
-        plt.title(f"Distribution of the sum of weights of the input layer in epoch {str(epoch)}")
-        # save in a folder called "input_weight_distribution"
-        plt.savefig(f"input_weight_distribution/epoch_{str(epoch)}.png")
-        plt.close()
-        print(f"Plotting the input weight distribution took {time.time() - plot_time_start} seconds.")
+    # def _plot_input_distribution(self, epoch, values):
+    #     plot_time_start = time.time()
+    #     plt.hist(values, bins=100)
+    #     plt.title(f"Distribution of the sum of weights of the input layer in epoch {str(epoch)}")
+    #     # save in a folder called "input_weight_distribution"
+    #     plt.savefig(f"input_weight_distribution/epoch_{str(epoch)}.png")
+    #     plt.close()
+    #     print(f"Plotting the input weight distribution took {time.time() - plot_time_start} seconds.")
 
     def predict(self, x_test, y_test, batch_size=100):
         """
