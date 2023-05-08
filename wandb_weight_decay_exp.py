@@ -4,7 +4,7 @@ import time
 from typing_extensions import TypeAlias
 import wandb
 
-wandb.login(key="91381d9442817977bd94e5b7ebe345cbbe49fd6f", timeout=300)
+wandb.login(key="43d952ea50348fd7b9abbc1ab7d0b787571e8918", timeout=300)
 
 import numpy as np
 
@@ -66,18 +66,22 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [0.95, 0.99]
             # },
+            'nhidden':{
+                'distribution': 'categorical',
+                'values': [100, 200, 500, 1000, 2500]
+            },
             # 'n_redundant':{
             #     'distribution': 'categorical',
             #     'values': [0, 5, 10, 25, 50, 100]
             # },
-            # 'weight_decay' :{
-            #     'distribution': 'categorical',
-            #     'values': [1e-2, 1e-3, 1e-4, 2e-4, 1e-5, 1e-6, 1e-7, 0]
-            # },
-            'zeta' : {
+            'weight_decay' :{
                 'distribution': 'categorical',
-                'values': [0.2, 0.4, 0.6]
+                'values': [1e-4, 1e-5, 1e-6, 1e-7]
             },
+            # 'zeta' : {
+            #     'distribution': 'categorical',
+            #     'values': [0.2, 0.3, 0.4, 0.5, 0.6]
+            # },
         }
     }
 
@@ -124,9 +128,9 @@ if __name__ == "__main__":
         'momentum': {
             'value': args.momentum
         },
-        'nhidden':{
-            'value': 200
-        },
+        # 'nhidden':{
+        #     'value': 200
+        # },
         'n_classes': {
             'value': 2
         },
@@ -157,18 +161,18 @@ if __name__ == "__main__":
         'update_batch':{
             'value': True
         },
-        'weight_decay':{
-            'value': 1e-2
-        },
+        # 'weight_decay':{
+        #     'value': 1e-5
+        # },
         'weight_init':{
             'value': 'zeros'
         },
         'zero_init_param':{
             'value': 1e-4
         },
-        # 'zeta' : {
-        #     'value': 0.4
-        # }
+        'zeta' : {
+            'value': 0.3
+        }
     })
 
     pprint.pprint(sweep_config)
@@ -196,6 +200,7 @@ if __name__ == "__main__":
             else:
                 x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
             
+            print("step 3")
             if config.flex_batch_size:
                 print(f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}.")
                 # if the batch size is too large, we ensure that there are at least 8 batches
@@ -207,7 +212,7 @@ if __name__ == "__main__":
                 print(f"The batch size is fixed since flex_batch_size is {config.flex_batch_size}.")
                 batch_size = 32
             np.random.seed(42)
-
+            print ("step 4")
             network = SET_MLP((x_train.shape[1], config.nhidden, y_train.shape[1]),
                               (AlternatedLeftReLU(-config.allrelu_slope), Softmax), 
                               input_pruning=config.input_pruning,
@@ -219,7 +224,7 @@ if __name__ == "__main__":
             print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}, {x_val.shape}, {y_val.shape}")
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
-
+            print("step 5")
             network.fit(    
                 x_train,
                 y_train,
@@ -257,9 +262,9 @@ if __name__ == "__main__":
             print("\nTotal testing time: ", network.testing_time)
             print("\nTotal evolution time: ", network.evolution_time)
             sum_training_time += step_time 
-
-
-    sweep_id = wandb.sweep(sweep_config, project="weight-decay-exp")
+    print("before sweep id")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="nhidden")
+    print("before calling agent")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
