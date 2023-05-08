@@ -74,10 +74,10 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [0, 5, 10, 25, 50, 100]
             # },
-            'weight_decay' :{
-                'distribution': 'categorical',
-                'values': [1e-4, 1e-5, 1e-6, 1e-7]
-            },
+            # 'weight_decay' :{
+            #     'distribution': 'categorical',
+            #     'values': [1e-4, 1e-5, 1e-6, 1e-7]
+            # },
             # 'zeta' : {
             #     'distribution': 'categorical',
             #     'values': [0.2, 0.3, 0.4, 0.5, 0.6]
@@ -138,10 +138,10 @@ if __name__ == "__main__":
             'value': 16
         },
         'n_samples': {
-            'value': 600
+            'value': 500
         },
         'n_features': {
-            'value': 2500
+            'value': 5000
         },
         'n_informative':{
             'value': 20
@@ -161,9 +161,9 @@ if __name__ == "__main__":
         'update_batch':{
             'value': True
         },
-        # 'weight_decay':{
-        #     'value': 1e-5
-        # },
+        'weight_decay':{
+            'value': 1e-5
+        },
         'weight_init':{
             'value': 'zeros'
         },
@@ -248,7 +248,10 @@ if __name__ == "__main__":
             )
             print("Training finished")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
+            time_before_fs = time.time()
             accuracy_topk, pct_correct = evaluate_fs(x_train, x_val, y_train, y_val, selected_features, config.K, after_training=True)
+            time_after_fs = time.time()
+            print("Time for FS after training: ", time_after_fs - time_before_fs)
             wandb.summary['pct_correct'] = pct_correct
             wandb.log({'pct_correct': pct_correct})
             wandb.summary['accuracy_topk'] = accuracy_topk
@@ -263,7 +266,7 @@ if __name__ == "__main__":
             print("\nTotal evolution time: ", network.evolution_time)
             sum_training_time += step_time 
     print("before sweep id")
-    sweep_id = wandb.sweep(sweep=sweep_config, project="nhidden")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="madelon-harder-3")
     print("before calling agent")
     wandb.agent(sweep_id, function=run_exp)
 

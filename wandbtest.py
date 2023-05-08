@@ -761,7 +761,11 @@ class SET_MLP:
 
                 if i % 2 == 0:
                     selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
+                    before_fs_time = time.time()
                     accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
+                    after_fs_time = time.time()
+                    fs_time = after_fs_time - before_fs_time
+                    print(f"Time to evaluate the selected features during epoch {i}: {fs_time}")
                     if config.data == "synthetic":
                         print(f"Out of the top {config.K} features, {pct_correct} are correct")
                     else:
