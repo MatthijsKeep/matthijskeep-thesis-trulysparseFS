@@ -981,7 +981,6 @@ class SET_MLP:
             #         inputLayerConnections=self.input_layer_connections,
             #     )
 
-            # add new random connections # TODO: modify to a smart way of adding new connections
             keep_connections = np.size(rows_w_new)
             length_random = vals_w.shape[0] - keep_connections
             if self.weight_init == 'normal':
@@ -994,7 +993,6 @@ class SET_MLP:
                 if self.weight_init == 'zeros':
                     limit = self.zero_init_limit
                 if self.weight_init == 'neuron_importance':
-                    # TODO: FIX using norm dist from kichler
                     limit = np.sqrt(6. / float(self.dimensions[i - 1]))
                 random_vals = np.random.uniform(-limit, limit, length_random)
 
