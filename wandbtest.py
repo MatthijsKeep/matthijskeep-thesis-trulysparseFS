@@ -321,6 +321,13 @@ class SET_MLP:
         self.config = config
         self.zero_init_limit = 1e-4
 
+        if self.config.data in ['synthetic', 'madelon']:
+            print(f"Setting K to 20, since {self.config.data} has 20 informative features")
+            self.config.K = 20
+        else:
+            print(f"Setting K to 50, since {self.config.data} has 50 informative features")
+            self.config.K = 50
+
         self.training_time = 0
         self.testing_time = 0
         self.evolution_time = 0
@@ -804,7 +811,7 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss or accuracy_topk < max_accuracy_topk:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs/5: # NOTE (M): Only for debugging purposes
+                    if early_stopping_counter >= epochs: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan

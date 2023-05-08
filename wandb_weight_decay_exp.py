@@ -42,6 +42,10 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
+            'data': {
+                'distribution': 'categorical',
+                'values': ['synthetic', 'mnist', 'FashionMnist', 'madelon']
+            },
             # 'dropout_rate': {
             #     'distribution': 'categorical',
             #     'values': [0, 0.1, 0.2, 0.3, 0.4]
@@ -89,14 +93,14 @@ if __name__ == "__main__":
         'allrelu_slope': {
             'value': 0.6
         },
-        'data':{
-            'value': "synthetic"
-        },
+        # 'data':{
+        #     'value': "synthetic"
+        # },
         'dropout_rate':{
             'value': 0.3
         },
         'epochs':{
-            'value': 100
+            'value': 25
         },
         'epsilon':{
             'value': 20
@@ -116,9 +120,9 @@ if __name__ == "__main__":
         'input_pruning':{
             'value': False
         },
-        'K': {
-            'value': 20
-        },
+        # 'K': {
+        #     'value': 20
+        # },
         'lamda':{
             'value': 0.99
         },
@@ -266,7 +270,7 @@ if __name__ == "__main__":
             print("\nTotal evolution time: ", network.evolution_time)
             sum_training_time += step_time 
     print("before sweep id")
-    sweep_id = wandb.sweep(sweep=sweep_config, project="madelon-harder-3")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="nhidden")
     print("before calling agent")
     wandb.agent(sweep_id, function=run_exp)
 
