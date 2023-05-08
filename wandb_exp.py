@@ -42,10 +42,10 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
-            'dropout_rate': {
-                'distribution': 'categorical',
-                'values': [0, 0.1, 0.2, 0.3, 0.4]
-            },
+            # 'dropout_rate': {
+            #     'distribution': 'categorical',
+            #     'values': [0, 0.1, 0.2, 0.3, 0.4]
+            # },
             # 'flex_batch_size':{
             #     'distribution': 'categorical',
             #     'values': [True, False]
@@ -54,14 +54,14 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [5, 10, 50]
             # },
-            'input_pruning':{
-                'distribution': 'categorical',
-                'values': [True, False]
-            },
-            'learning_rate':{
-                'distribution': 'categorical',
-                'values': [1e-2, 1e-3]
-            },
+            # 'input_pruning':{
+            #     'distribution': 'categorical',
+            #     'values': [True, False]
+            # },
+            # 'learning_rate':{
+            #     'distribution': 'categorical',
+            #     'values': [1e-2, 1e-3]
+            # },
             # 'lamda':{
             #     'distribution': 'categorical',
             #     'values': [0.95, 0.99]
@@ -70,6 +70,10 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [0, 5, 10, 25, 50, 100]
             # },
+            'weight_decay':{
+                'distribution': 'categorical',
+                'values': [0, 1e-6, 1e-5, 1e-4, 1e-3]
+            }
             # 'zeta' : {
             #     'distribution': 'categorical',
             #     'values': [0.2, 0.4]
@@ -82,11 +86,11 @@ if __name__ == "__main__":
             'value': 0.6
         },
         'data':{
-            'value': "synthetic"
+            'value': "mnist"
         },
-        # 'dropout_rate':{
-        #     'value': 0.3
-        # },
+        'dropout_rate':{
+            'value': 0.3
+        },
         'epochs':{
             'value': 100
         },
@@ -100,23 +104,23 @@ if __name__ == "__main__":
             'value': True
         },
         'flex_param':{
-            'value': 16
+            'value': 32
         },
         'importance_pruning':{
             'value': True
         },
-        # 'input_pruning':{
-        #     'value': True
-        # },
+        'input_pruning':{
+            'value': False
+        },
         'K': {
-            'value': 20
+            'value': 50
         },
         'lamda':{
             'value': 0.99
         },
-        # 'learning_rate':{
-        #     'value': 1e-2
-        # },
+        'learning_rate':{
+            'value': 1e-2
+        },
         'momentum': {
             'value': args.momentum
         },
@@ -145,7 +149,7 @@ if __name__ == "__main__":
             'value': 0
         },
         'plotting': {
-            'value': False
+            'value': True
         },
         'runs': {
             'value': args.runs
@@ -153,17 +157,11 @@ if __name__ == "__main__":
         'update_batch':{
             'value': True
         },
-        'weight_decay':{
-            'value': args.weight_decay
-        },
-        'weight_init':{
-            'value': 'zeros'
-        },
-        'zero_init_param':{
-            'value': 1e-4
-        },
+        # 'weight_decay':{
+        #     'value': 1e-4
+        # },
         'zeta' : {
-            'value': 0.4
+            'value': 0.3
         }
     })
 
@@ -189,13 +187,16 @@ if __name__ == "__main__":
                 x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data, **data_config)
             else:
                 x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
-            
+
+            print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}")
             if config.flex_batch_size:
                 print(f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}.")
                 # if the batch size is too large, we ensure that there are at least 8 batches
                 batch_size = int(np.ceil(x_train.shape[0]/config.flex_param))
                 # round up to the nearest power of 2
                 batch_size = 2**int(np.ceil(np.log2(batch_size)))
+                # ensure that the batch size is never larger than 128
+                batch_size = min(batch_size, 128)
                 print(batch_size)
             else:
                 print(f"The batch size is fixed since flex_batch_size is {config.flex_batch_size}.")
@@ -208,9 +209,9 @@ if __name__ == "__main__":
                               importance_pruning=config.importance_pruning,
                               epsilon=config.epsilon,
                               lamda=config.lamda,
-                              weight_init=config.weight_init,
+                              weight_init='zeros',
                               config=config) # One-layer version   
-            print(f"Data shapes are: {x_train.shape}, {y_train.shape}, {x_test.shape}, {y_test.shape}, {x_val.shape}, {y_val.shape}")
+
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
 
@@ -242,7 +243,7 @@ if __name__ == "__main__":
             wandb.log({'pct_correct': pct_correct})
             wandb.summary['accuracy_topk'] = accuracy_topk
             wandb.log({'accuracy_topk': accuracy_topk})
-            
+
             print("Accuracy top k: ", accuracy_topk)
             step_time = time.time() - start_time
             print("\nTotal execution time: ", step_time)
@@ -253,7 +254,7 @@ if __name__ == "__main__":
             sum_training_time += step_time 
 
 
-    sweep_id = wandb.sweep(sweep_config, project="test-input-pruning")
+    sweep_id = wandb.sweep(sweep_config, project="visualize_mnist")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()
