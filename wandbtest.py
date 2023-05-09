@@ -253,8 +253,7 @@ def get_data(dataset, **kwargs):
     elif dataset == 'mnist':
         x_train, y_train, x_test, y_test, x_val, y_val = load_mnist_data(50000, 10000)
     elif dataset == 'madelon':
-        x_train, y_train, x_test, y_test = load_madelon_data()
-        x_val, y_val = None, None # None for now
+        x_train, y_train, x_test, y_test, x_val, y_val = load_madelon_data()
     elif dataset == 'usps':
         x_train, y_train, x_test, y_test = load_usps()
         x_val, y_val = None, None # None for now
