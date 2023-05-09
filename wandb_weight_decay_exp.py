@@ -211,6 +211,8 @@ if __name__ == "__main__":
                 batch_size = int(np.ceil(x_train.shape[0]/config.flex_param))
                 # round up to the nearest power of 2
                 batch_size = 2**int(np.ceil(np.log2(batch_size)))
+                # ensure that the batch size is never larger than 128
+                batch_size = min(batch_size, 128)
                 print(batch_size)
             else:
                 print(f"The batch size is fixed since flex_batch_size is {config.flex_batch_size}.")

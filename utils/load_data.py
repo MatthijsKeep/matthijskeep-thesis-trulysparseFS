@@ -54,8 +54,9 @@ def load_madelon_data():
     x_val = x_val.astype('float32')
     y_train = to_categorical(y_train, 2)
     y_val = to_categorical(y_val, 2)
+    y_test = np.zeros((x_test.shape[0], 2))
 
-    return x_train, y_train, x_val, y_val
+    return x_train, y_train, x_val, y_val, x_test, y_test
 
 
 # The MNIST database of handwritten digits.
@@ -492,7 +493,12 @@ def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informati
     y = to_categorical(y, n_classes)
     # train, test, val split
     train_X, test_X, train_y, test_y = train_test_split(X, y, test_size=0.20, random_state=42)
-    train_X, val_X, train_y, val_y = train_test_split(train_X, train_y, test_size=0.20, random_state=42)
+    test_X, val_X, test_y, val_y = train_test_split(test_X, test_y, test_size=0.50, random_state=42)
+
+    # check if shapes are correct. train should be 80% of the data, test and val should be 10% each, allow for rounding
+    print(f"Expected train shape: {(n_samples*0.8, n_features)}, actual train shape: {train_X.shape}")
+    print(f"Expected test shape: {(n_samples*0.1, n_features)}, actual test shape: {test_X.shape}")
+    print(f"Expected val shape: {(n_samples*0.1, n_features)}, actual val shape: {val_X.shape}")
 
     print(f"shapes are: {train_X.shape}, {train_y.shape}, {test_X.shape}, {test_y.shape}")
     return train_X, train_y, test_X, test_y, val_X, val_y
