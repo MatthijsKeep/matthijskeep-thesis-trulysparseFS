@@ -279,6 +279,44 @@ def get_data(dataset, **kwargs):
                                                                         n_informative = kwargs['n_informative'],
                                                                         n_redundant = kwargs['n_redundant'],
                                                                         n_clusters_per_class = kwargs['n_clusters_per_class'],)
+    elif dataset == 'synthetic1':
+        x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 1000,
+                                                                        n_features = 2500,
+                                                                        n_classes = 2,
+                                                                        n_informative = 20,
+                                                                        n_redundant = 0,
+                                                                        n_clusters_per_class = 16)
+    elif dataset == 'synthetic2':
+        x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
+                                                                        n_features = 2500,
+                                                                        n_classes = 2,
+                                                                        n_informative = 20,
+                                                                        n_redundant = 0,
+                                                                        n_clusters_per_class = 16)
+    elif dataset == 'synthetic3':
+        x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
+                                                                        n_features = 5000
+                                                                        n_classes = 2,
+                                                                        n_informative = 20,
+                                                                        n_redundant = 0,
+                                                                        n_clusters_per_class = 16)
+        
+    elif dataset == 'synthetic4':
+        x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
+                                                                        n_features = 10000,
+                                                                        n_classes = 2,
+                                                                        n_informative = 20,
+                                                                        n_redundant = 0,
+                                                                        n_clusters_per_class = 16)
+    elif dataset == 'synthetic5':
+        x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 100,
+                                                                        n_features = 10000,
+                                                                        n_classes = 2,
+                                                                        n_informative = 20,
+                                                                        n_redundant = 0,
+                                                                        n_clusters_per_class = 16)
+        
+        
     else:
         raise ValueError("Unknown dataset")
     return x_train, y_train, x_test, y_test, x_val, y_val
