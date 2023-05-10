@@ -44,7 +44,7 @@ if __name__ == "__main__":
         'parameters': {
             'data': {
                 'distribution': 'categorical',
-                'values': ['synthetic', 'mnist', 'FashionMnist', 'madelon']
+                'values': ['synthetic1', 'synthetic2', 'synthetic3', 'synthetic4', 'synthetic5', 'mnist', 'madelon', 'smk', 'gla', 'usps', 'coil', 'isolet', 'har']
             },
             # 'dropout_rate': {
             #     'distribution': 'categorical',
@@ -70,10 +70,10 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [0.95, 0.99]
             # },
-            'nhidden':{
-                'distribution': 'categorical',
-                'values': [100, 200, 500, 1000, 2500]
-            },
+            # 'nhidden':{
+            #     'distribution': 'categorical',
+            #     'values': [100, 200, 500, 1000, 2500]
+            # },
             # 'n_redundant':{
             #     'distribution': 'categorical',
             #     'values': [0, 5, 10, 25, 50, 100]
@@ -100,7 +100,7 @@ if __name__ == "__main__":
             'value': 0.3
         },
         'epochs':{
-            'value': 25
+            'value': 100
         },
         'epsilon':{
             'value': 20
@@ -132,9 +132,9 @@ if __name__ == "__main__":
         'momentum': {
             'value': args.momentum
         },
-        # 'nhidden':{
-        #     'value': 200
-        # },
+        'nhidden':{
+            'value': 200
+        },
         'n_classes': {
             'value': 2
         },
@@ -253,6 +253,7 @@ if __name__ == "__main__":
                 config=config,
             )
             print("Training finished")
+            print(f"Now selecting {config.K} features")
             selected_features, importances = select_input_neurons(copy.deepcopy(network.w[1]), config.K)
             time_before_fs = time.time()
             accuracy_topk, pct_correct = evaluate_fs(x_train, x_val, y_train, y_val, selected_features, config.K, after_training=True)
@@ -272,7 +273,7 @@ if __name__ == "__main__":
             print("\nTotal evolution time: ", network.evolution_time)
             sum_training_time += step_time 
     print("before sweep id")
-    sweep_id = wandb.sweep(sweep=sweep_config, project="nhidden")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="results-fastr")
     print("before calling agent")
     wandb.agent(sweep_id, function=run_exp)
 
