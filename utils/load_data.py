@@ -211,8 +211,8 @@ def load_usps():
 
     # print amount of unique valus in train_y
 
-    train_y = np_utils.to_categorical(train_y, 10)
-    test_y = np_utils.to_categorical(test_y, 10)
+    train_y = to_categorical(train_y, 10)
+    test_y = to_categorical(test_y, 10)
     train_X = train_X.astype('float64')
     test_X = test_X.astype('float64')
 
@@ -237,7 +237,6 @@ def load_usps():
 
     return train_X, train_y, test_X, test_y
 
-
 def load_coil():
 
     # read in coil data matrix from data/COIL20.mat
@@ -251,8 +250,8 @@ def load_coil():
 
     train_X, test_X, train_y, test_y = train_test_split(X, y, test_size=0.20, random_state=42)
     
-    train_y = np_utils.to_categorical(train_y, 20)
-    test_y = np_utils.to_categorical(test_y, 20)
+    train_y = to_categorical(train_y, 20)
+    test_y = to_categorical(test_y, 20)
     train_X = train_X.astype('float64')
     test_X = test_X.astype('float64')
 
@@ -278,7 +277,6 @@ def load_coil():
 
     return train_X, train_y, test_X, test_y
 
-
 def load_isolet():
     import pandas as pd
     df=pd.read_csv('./data/isolet.csv', sep=',',header=None)
@@ -290,8 +288,8 @@ def load_isolet():
 
     train_X, test_X, train_y, test_y = train_test_split(X, y, test_size=0.20, random_state=42) 
 
-    train_y = np_utils.to_categorical(train_y, 26)
-    test_y = np_utils.to_categorical(test_y, 26)
+    train_y = to_categorical(train_y, 26)
+    test_y = to_categorical(test_y, 26)
 
     train_X = train_X.astype('float64')
     test_X = test_X.astype('float64')
@@ -330,8 +328,8 @@ def load_har():
     y_test = y_test - 1
 
     # to categorical
-    y_train = np_utils.to_categorical(y_train, 6)
-    y_test = np_utils.to_categorical(y_test, 6)
+    y_train = to_categorical(y_train, 6)
+    y_test = to_categorical(y_test, 6)
 
     print(f"Shapes are: X_train: {X_train.shape}, y_train: {y_train.shape}, X_test: {X_test.shape}, y_test: {y_test.shape}")
 
@@ -353,8 +351,8 @@ def load_pcmac():
     train_y = train_y - 1
     test_y = test_y - 1
 
-    train_y = np_utils.to_categorical(train_y, 2)
-    test_y = np_utils.to_categorical(test_y, 2)
+    train_y = to_categorical(train_y, 2)
+    test_y = to_categorical(test_y, 2)
 
     train_X = train_X.astype('float64')
     test_X = test_X.astype('float64')

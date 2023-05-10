@@ -229,8 +229,8 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K, after_tr
     y_test_new = np.argmax(y_test, axis=1)
 
     # take random subset of the data (20%) if the dataset is too big
-    if x_train_new.shape[0] > 5000 and not after_training:
-        x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
+    if x_train_new.shape[0] > 2500 and not after_training:
+        x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.9, stratify=y_train_new)
     
     return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4), pct_correct
 
@@ -256,22 +256,22 @@ def get_data(dataset, **kwargs):
         x_train, y_train, x_test, y_test, x_val, y_val = load_madelon_data()
     elif dataset == 'usps':
         x_train, y_train, x_test, y_test = load_usps()
-        x_val, y_val = None, None # None for now
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'coil':
         x_train, y_train, x_test, y_test = load_coil()
-        x_val, y_val = None, None # None for now
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'isolet':
         x_train, y_train, x_test, y_test = load_isolet()
-        x_val, y_val = None, None # None for now
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'har':
         x_train, y_train, x_test, y_test = load_har()
-        x_val, y_val = None, None # None for now
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'smk':
         x_train, y_train, x_test, y_test = load_smk()
-        x_val, y_val = None, None # None for now
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'gla':
         x_train, y_train, x_test, y_test = load_gla()
-        x_val, y_val = None, None # None for now
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'synthetic':
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = kwargs['n_samples'],
                                                                         n_features = kwargs['n_features'],
@@ -295,7 +295,7 @@ def get_data(dataset, **kwargs):
                                                                         n_clusters_per_class = 16)
     elif dataset == 'synthetic3':
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
-                                                                        n_features = 5000
+                                                                        n_features = 5000,
                                                                         n_classes = 2,
                                                                         n_informative = 20,
                                                                         n_redundant = 0,
@@ -358,7 +358,7 @@ class SET_MLP:
         self.config = config
         self.zero_init_limit = 1e-4
 
-        if self.config.data in ['synthetic', 'madelon']:
+        if self.config.data in ['synthetic', 'synthetic1', 'synthetic2', 'synthetic3', 'synthetic4', 'synthetic5', 'madelon']:
             print(f"Setting K to 20, since {self.config.data} has 20 informative features")
             self.config.K = 20
         else:
