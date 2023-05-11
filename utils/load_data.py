@@ -56,7 +56,7 @@ def load_madelon_data():
     y_val = to_categorical(y_val, 2)
     y_test = np.zeros((x_test.shape[0], 2))
 
-    return x_train, y_train, x_val, y_val, x_test, y_test
+    return x_train, y_train, x_val, y_val
 
 
 # The MNIST database of handwritten digits.

@@ -253,7 +253,8 @@ def get_data(dataset, **kwargs):
     elif dataset == 'mnist':
         x_train, y_train, x_test, y_test, x_val, y_val = load_mnist_data(50000, 10000)
     elif dataset == 'madelon':
-        x_train, y_train, x_test, y_test, x_val, y_val = load_madelon_data()
+        x_train, y_train, x_test, y_test = load_madelon_data()
+        x_val, y_val = x_test, y_test # None for now
     elif dataset == 'usps':
         x_train, y_train, x_test, y_test = load_usps()
         x_val, y_val = x_test, y_test # None for now
@@ -280,6 +281,7 @@ def get_data(dataset, **kwargs):
                                                                         n_redundant = kwargs['n_redundant'],
                                                                         n_clusters_per_class = kwargs['n_clusters_per_class'],)
     elif dataset == 'synthetic1':
+        print("Loading synthetic1")
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 1000,
                                                                         n_features = 2500,
                                                                         n_classes = 2,
@@ -287,6 +289,7 @@ def get_data(dataset, **kwargs):
                                                                         n_redundant = 0,
                                                                         n_clusters_per_class = 16)
     elif dataset == 'synthetic2':
+        print("Loading synthetic2")
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
                                                                         n_features = 2500,
                                                                         n_classes = 2,
@@ -294,6 +297,7 @@ def get_data(dataset, **kwargs):
                                                                         n_redundant = 0,
                                                                         n_clusters_per_class = 16)
     elif dataset == 'synthetic3':
+        print("Loading synthetic3")
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
                                                                         n_features = 5000,
                                                                         n_classes = 2,
@@ -302,6 +306,7 @@ def get_data(dataset, **kwargs):
                                                                         n_clusters_per_class = 16)
         
     elif dataset == 'synthetic4':
+        print("Loading synthetic4")
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 500,
                                                                         n_features = 10000,
                                                                         n_classes = 2,
@@ -309,6 +314,7 @@ def get_data(dataset, **kwargs):
                                                                         n_redundant = 0,
                                                                         n_clusters_per_class = 16)
     elif dataset == 'synthetic5':
+        print("Loading synthetic5")
         x_train, y_train, x_test, y_test, x_val, y_val = load_synthetic(n_samples = 100,
                                                                         n_features = 10000,
                                                                         n_classes = 2,
