@@ -46,7 +46,6 @@ class dst_FS():
                     print("Sparse Initialization ",": Density ",self.density,"; Sparsity ",sparsity,"; NoParameters ",noParameters,"; NoRows ",noRows,"; NoCols ",noCols,"; NoDenseParam ",noRows*noCols)
                     print (" OutDegreeBottomNeurons %.2f ± %.2f; InDegreeTopNeurons %.2f ± %.2f" % (torch.mean(self.mask[name].sum(axis=1)),torch.std(self.mask[name].sum(axis=1)),torch.mean(self.mask[name].sum(axis=0)),torch.std(self.mask[name].sum(axis=0))))
 
-    # ensure same sparsity after weight update # TODO (M): Looks like here we should change to true sparsity, since this looks like masking
     def apply_mask_on_weights(self):
         for name, param in self.model.named_parameters():
             if param.requires_grad:

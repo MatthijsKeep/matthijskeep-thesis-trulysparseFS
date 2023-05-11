@@ -348,8 +348,6 @@ def plot_metrics():
     }
 
     #
-    # TODO: Adapt to handle multiple datasets
-
     # For every entry in the metrics dict, plot the mean and std of the test loss per epoch, with the shape (runs, epochs, 4) where 4 is the train loss, test loss, train accuracy, test accuracy
     for key, value in metrics.items():
         print(key)

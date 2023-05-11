@@ -317,7 +317,6 @@ def load_isolet():
 
 def load_har():
 
-    # TODO - check if correct?
 
     X_train = np.loadtxt('./data/UCI_HAR_Dataset/train/X_train.txt')
     y_train = np.loadtxt('./data/UCI_HAR_Dataset/train/y_train.txt')
@@ -502,21 +501,6 @@ def load_synthetic(n_samples = 200, n_features = 500, n_classes = 2, n_informati
     return train_X, train_y, test_X, test_y, val_X, val_y
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# TODO - make sure everything works with the function below (think about n_samples in the mnist and fashionmnist functions)
 
 def get_data(args):
     if args.data == 'mnist':

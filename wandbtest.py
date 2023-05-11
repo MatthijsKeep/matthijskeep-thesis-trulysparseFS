@@ -234,7 +234,6 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K, after_tr
     
     return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4), pct_correct
 
-# TODO - ship this function into load_data
 def get_data(dataset, **kwargs):
     """
     Function to load the data from the dataset.
