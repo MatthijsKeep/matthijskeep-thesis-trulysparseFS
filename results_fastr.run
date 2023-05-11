@@ -3,8 +3,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
 #SBATCH --partition=mcs.default.q
-#SBATCH --error=slurm/slurm-%j.err
-#SBATCH --output=slurm/slurm-%j.out
+#SBATCH --error=slurm/slurm-fastr-%j.err
+#SBATCH --output=slurm/slurm-fastr-%j.out
 #SBATCH --time=48:00:00
 #SBATCH --export=ALL
 #SBATCH --get-user-env
