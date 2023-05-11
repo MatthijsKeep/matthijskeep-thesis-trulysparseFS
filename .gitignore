@@ -194,3 +194,5 @@ loss_synthetic_250epochs_batchupdateTrue_runs10_neuron_importance_importanceprun
 loss_usps_100epochs_batchupdateTrue_runs10_neuron_importance_importancepruningTrue_inputpruningTrue.png
 
 neurofs
+
+wast/
