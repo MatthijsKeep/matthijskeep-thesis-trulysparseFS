@@ -42,14 +42,14 @@ if __name__ == "__main__":
             'min_iter': 50
         },
         'parameters': {
+            'dropout_rate': {
+                'distribution': 'categorical',
+                'values': [0, 0.1, 0.2, 0.3]
+            },
             'data': {
                 'distribution': 'categorical',
                 'values': ['synthetic1', 'synthetic2', 'synthetic3', 'synthetic4', 'synthetic5', 'mnist', 'madelon', 'smk', 'gla', 'usps', 'coil', 'isolet', 'har']
             },
-            # 'dropout_rate': {
-            #     'distribution': 'categorical',
-            #     'values': [0, 0.1, 0.2, 0.3, 0.4]
-            # },
             # 'flex_batch_size':{
             #     'distribution': 'categorical',
             #     'values': [True, False]
@@ -64,7 +64,7 @@ if __name__ == "__main__":
             # },
             # 'learning_rate':{
             #     'distribution': 'categorical',
-            #     'values': [1e-2, 1e-3]
+            #     'values': [1e-2, 1e-3, 1e-4]
             # },
             # 'lamda':{
             #     'distribution': 'categorical',
@@ -96,11 +96,11 @@ if __name__ == "__main__":
         # 'data':{
         #     'value': "synthetic"
         # },
-        'dropout_rate':{
-            'value': 0.3
-        },
+        # 'dropout_rate':{
+        #     'value': 0.3
+        # },
         'epochs':{
-            'value': 100
+            'value': 1000
         },
         'epsilon':{
             'value': 20

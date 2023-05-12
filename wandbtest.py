@@ -853,12 +853,12 @@ class SET_MLP:
                 print(f"Early stopping counter: {early_stopping_counter}")
                 if loss_test > min_loss or accuracy_topk < max_accuracy_topk:
                     early_stopping_counter += 1
-                    if early_stopping_counter >= epochs: # NOTE (M): Only for debugging purposes
+                    if early_stopping_counter >= 10: # NOTE (M): Only for debugging purposes
                         print(f"Early stopping run {run} epoch {i}")
                         # fill metrics with nan
                         metrics[run-1, i:, :] = np.nan
                         # if last run, save metrics
-                        if run == self.config.runs - 1:
+                        if run == self.config.runs - 1: 
                             print(metrics[run-1, :, 0])
                             filename = f"results/metrics/metrics_{config.data}_{config.epochs}epochs_batchupdate{config.update_batch}_{self.weight_init}_importancepruning{config.importance_pruning}_inputpruning{config.input_pruning}_zeta{config.zeta}.npy"
                             if os.path.exists(filename):
