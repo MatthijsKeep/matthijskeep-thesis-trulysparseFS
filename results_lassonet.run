@@ -32,4 +32,4 @@ echo "conda activate th_py38"
 
 echo $(env)
 
-python3 results_lassonet/main.py # TODO 
+python3 results_lassonet/main.py
