@@ -159,16 +159,16 @@ def cae_fs(config, output_classes, K):
     output_dim = x_train.shape[1]
 
     def decoder(x):
-        x = Dense(320)(x)
+        x = Dense(output_dim)(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(0.1)(x)
-        x = Dense(320)(x)
+        x = Dense(int(1.5*output_dim))(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(0.1)(x)
         x = Dense(output_dim)(x)
         return x
 
-    selector = ConcreteAutoencoderFeatureSelector(K = config., output_function = decoder, num_epochs = 800)
+    selector = ConcreteAutoencoderFeatureSelector(K = K, output_function = decoder, num_epochs = 200)
 
     selector.fit(x_train, x_train, x_test, x_test)
     # Train SVM classifier with the selected features
