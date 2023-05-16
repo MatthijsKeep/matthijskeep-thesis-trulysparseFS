@@ -3,8 +3,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
 #SBATCH --partition=mcs.default.q
-#SBATCH --error=slurm/dufs/slurm-dufs-%j.err
-#SBATCH --output=slurm/dufs/slurm-dufs-%j.out
+#SBATCH --error=slurm/cae/slurm-cae-%j.err
+#SBATCH --output=slurm/cae/slurm-cae-%j.out
 #SBATCH --time=48:00:00
 #SBATCH --export=ALL
 #SBATCH --get-user-env
@@ -32,4 +32,4 @@ echo "conda activate th_py38"
 
 echo $(env)
 
-python3 results_dufs/main.py # TODO 
+python3 results_cae/main.py

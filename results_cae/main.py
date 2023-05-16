@@ -26,8 +26,11 @@ wandb.login(key="43d952ea50348fd7b9abbc1ab7d0b787571e8918", timeout=300)
 
 print(os.getcwd())
 
-from model import *
+from concrete_autoencoder import ConcreteAutoencoderFeatureSelector
 
+from keras.utils import to_categorical
+from keras.layers import Dense, Dropout, LeakyReLU
+import numpy as np
 
 from sklearn import svm
 
@@ -41,7 +44,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from results_stg.fastr_utils.load_data import *
+from fastr_utils.load_data import *
 
 def get_data(dataset, **kwargs):
     """
@@ -139,45 +142,44 @@ def get_data(dataset, **kwargs):
 
 
 
-def stg_fs(data, k=50, output_dim=2):
+def cae_fs(config, output_classes, K):
     """
-    Return new train and test data with K features selected using the stg algorithm
+    Return new train and test data with K features selected using the CAE algorithm
     """
 
-    train_X, train_y, test_X, test_y, val_X, val_y = get_data(data)
+    x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
 
-    #  make labels from one-hot encoding to single integer
-    if len(train_y.shape) > 1:
-        train_y = np.argmax(train_y, axis=1)
-        test_y = np.argmax(test_y, axis=1)
-        val_y = np.argmax(val_y, axis=1)
+    x_train = np.reshape(x_train, (len(x_train), -1))
+    x_test = np.reshape(x_test, (len(x_test), -1))
+    y_train = to_categorical(y_train)
+    y_test = to_categorical(y_test)
+    print(x_train.shape, y_train.shape)
+    print(x_test.shape, y_test.shape)
 
-    print(train_y[:3], test_y[:3], val_y[:3])
+    output_dim = x_train.shape[1]
 
-    print(f" Shapes going into STG: train_X: {train_X.shape}, train_y: {train_y.shape}, test_X: {test_X.shape}, test_y: {test_y.shape}")
+    def decoder(x):
+        x = Dense(320)(x)
+        x = LeakyReLU(0.2)(x)
+        x = Dropout(0.1)(x)
+        x = Dense(320)(x)
+        x = LeakyReLU(0.2)(x)
+        x = Dropout(0.1)(x)
+        x = Dense(output_dim)(x)
+        return x
 
-    # make STG (classification) take K features
-    print("before STG ")
-    model = stg.STG(task_type='classification',input_dim=train_X.shape[1], output_dim=output_dim, hidden_dims=[1000, 1000, 1000], activation='tanh',
-                optimizer='SGD', learning_rate=0.01, batch_size=train_X.shape[0], feature_selection=True, sigma=0.5,
-                lam=0.5, random_state=1, device='cpu')
-    print("fitting STG")
-    # If you get an error here, replace collections with collections.abc in the source code
-    model.fit(X=train_X, y=train_y, valid_X = val_X, valid_y=val_y, nr_epochs=500, verbose=True, shuffle=True, print_interval=50)
-    print("after STG")
-    gates = model.get_gates(mode='prob')
-    print(f"gates.shape: {gates.shape}")
+    selector = ConcreteAutoencoderFeatureSelector(K = config., output_function = decoder, num_epochs = 800)
 
-    # Get the indices of the top K features
-    top_k_indices = np.argsort(gates)[::-1][:k]
-
-    # Get the top K features
-    train_X_new = train_X[:, top_k_indices]
-    test_X_new = test_X[:, top_k_indices]
-
-    print("The shapes going into the SVM are", train_X_new.shape, test_X_new.shape)
+    selector.fit(x_train, x_train, x_test, x_test)
     # Train SVM classifier with the selected features
 
+    top_k_indices = selector.get_support(indices = True)
+
+    train_X_new = x_train[:, top_k_indices]
+    test_X_new = x_test[:, top_k_indices]
+
+    train_y = np.argmax(y_train, axis = 1)
+    test_y = np.argmax(y_test, axis = 1)
     return train_X_new, train_y, test_X_new, test_y, top_k_indices
 
 
@@ -186,7 +188,7 @@ def main(config):
     config = wandb.config
     print(config)
     print("---------------------")
-    print("Starting LassoNet")
+    print("Starting CAE")
 
     if config.data in ["synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5", "madelon"]:
         print(f"Since data is in {['synthetic1', 'synthetic2', 'synthetic3', 'synthetic4', 'synthetic5', 'madelon']}, we will use K = 20")
@@ -195,21 +197,23 @@ def main(config):
         K = 50
 
     if config.data in ["synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5", "madelon", "smk"]:
-        output_dim = 2
+        output_classes = 2
     elif config.data in ["gla"]:
-        output_dim = 4
+        output_classes = 4
     elif config.data in ["har"]:
-        output_dim = 6
+        output_classes = 6
     elif config.data in ["mnist", "usps"]:
-        output_dim = 10
+        output_classes = 10
     elif config.data in ["coil"]:
-        output_dim = 20
+        output_classes = 20
     elif config.data in ["isolet"]:
-        output_dim = 26
+        output_classes = 26
     else:
         raise ValueError("Unknown dataset, maybe check for typos")
+    
+    train_X_new, train_y, test_X_new, test_y, top_k_indices = cae_fs(config, output_classes, K)
 
-    train_X_new, train_y, test_X_new, test_y, top_k_indices = stg_fs(config.data, K, output_dim)
+
 
     # Train SVM classifier with the selected features
     svm_acc = svm_test(train_X_new, train_y, test_X_new, test_y)
@@ -259,5 +263,5 @@ if __name__ == '__main__':
         with wandb.init(config=config):
             main(config)
 
-    sweep_id = wandb.sweep(sweep_config, project="results_stg")
+    sweep_id = wandb.sweep(sweep_config, project="results_cae")
     wandb.agent(sweep_id, function=run_wast)
