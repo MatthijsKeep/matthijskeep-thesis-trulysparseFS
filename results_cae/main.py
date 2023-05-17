@@ -162,13 +162,16 @@ def cae_fs(config, output_classes, K):
         x = Dense(output_dim)(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(0.1)(x)
-        x = Dense(int(1.5*output_dim))(x)
+        x = Dense(int(K))(x)
+        x = LeakyReLU(0.2)(x)
+        x = Dropout(0.1)(x)
+        x = Dense(int(1.5*K))(x)
         x = LeakyReLU(0.2)(x)
         x = Dropout(0.1)(x)
         x = Dense(output_dim)(x)
         return x
 
-    selector = ConcreteAutoencoderFeatureSelector(K = K, output_function = decoder, num_epochs = 200)
+    selector = ConcreteAutoencoderFeatureSelector(K = K, output_function = decoder, num_epochs = 3)
 
     selector.fit(x_train, x_train, x_test, x_test)
     # Train SVM classifier with the selected features
@@ -216,6 +219,15 @@ def main(config):
 
 
     # Train SVM classifier with the selected features
+    print("Done with fitting, now testing SVM")
+    print(f"Shapes going into SVM: {train_X_new.shape}, {train_y.shape}, {test_X_new.shape}, {test_y.shape}")
+
+    # if y is one-hot, convert to categorical
+    if len(train_y.shape) > 1:
+        train_y = np.argmax(train_y, axis = 1)
+        test_y = np.argmax(test_y, axis = 1)
+
+    print(f"Shapes going into SVM: {train_X_new.shape}, {train_y.shape}, {test_X_new.shape}, {test_y.shape}")
     svm_acc = svm_test(train_X_new, train_y, test_X_new, test_y)
 
     if config.data in ["synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5"]:
