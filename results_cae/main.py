@@ -178,7 +178,7 @@ def get_data(dataset, **kwargs):
     return x_train, y_train, x_test, y_test, x_val, y_val
 
 
-def cae_fs(config, output_classes, K):
+def cae_fs(config, output_classes, K, batch_size=132):
     """
     Return new train and test data with K features selected using the CAE algorithm
     """
@@ -208,7 +208,11 @@ def cae_fs(config, output_classes, K):
         return x
 
     selector = ConcreteAutoencoderFeatureSelector(
-        K=K, output_function=decoder, num_epochs=3
+        K=K,
+        output_function=decoder,
+        num_epochs=100,
+        batch_size=batch_size,
+        learning_rate=0.01,
     )
 
     selector.fit(x_train, x_train, x_test, x_test)
@@ -217,10 +221,10 @@ def cae_fs(config, output_classes, K):
     top_k_indices = selector.get_support(indices=True)
 
     train_X_new = x_train[:, top_k_indices]
-    test_X_new = x_test[:, top_k_indices]
+    test_X_new = x_val[:, top_k_indices]
 
     train_y = np.argmax(y_train, axis=1)
-    test_y = np.argmax(y_test, axis=1)
+    test_y = np.argmax(y_val, axis=1)
     return train_X_new, train_y, test_X_new, test_y, top_k_indices
 
 
@@ -256,21 +260,27 @@ def main(config):
         "smk",
     ]:
         output_classes = 2
+        batch_size = 32
     elif config.data in ["gla"]:
         output_classes = 4
+        batch_size = 32
     elif config.data in ["har"]:
         output_classes = 6
+        batch_size = 128
     elif config.data in ["mnist", "usps"]:
         output_classes = 10
+        batch_size = 128
     elif config.data in ["coil"]:
         output_classes = 20
+        batch_size = 128
     elif config.data in ["isolet"]:
         output_classes = 26
+        batch_size = 128
     else:
         raise ValueError("Unknown dataset, maybe check for typos")
 
     train_X_new, train_y, test_X_new, test_y, top_k_indices = cae_fs(
-        config, output_classes, K
+        config, output_classes, K, batch_size
     )
 
     # Train SVM classifier with the selected features
@@ -281,7 +291,11 @@ def main(config):
 
     # if y is one-hot, convert to categorical
     if len(train_y.shape) > 1:
+        print(train_y[:3])
         train_y = np.argmax(train_y, axis=1)
+
+    if len(test_y.shape) > 1:
+        print(test_y[:3])
         test_y = np.argmax(test_y, axis=1)
 
     print(

@@ -169,9 +169,11 @@ def lassonet_fs(data, K):
     train_y = np.argmax(train_y, axis=1)
     test_y = np.argmax(test_y, axis=1)
     model = LassoNetClassifierCV(
-        M=K,
-        hidden_dims=(10,),
+        M=10,
+        hidden_dims=(1000,),
         verbose=0,
+        batch_size=128,
+        n_iters=100,
     )
     path = model.path(train_X, train_y)
 
