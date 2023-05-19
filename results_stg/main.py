@@ -290,6 +290,9 @@ def main(config):
     )
 
     # Train SVM classifier with the selected features
+
+    print(train_y)
+    print(test_y)
     svm_acc = svm_test(train_X_new, train_y, test_X_new, test_y)
 
     if config.data in [
