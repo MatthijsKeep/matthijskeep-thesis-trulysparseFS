@@ -6,25 +6,35 @@ import logging
 
 class Data(object):
     """Class providing an interface to the input training and testing data.
-        Attributes:
-          x_train: array of data points to use for training
-          y_train: array of labels to use for training
-          x_test: array of data points to use for testing
-          y_test: array of labels to use for testing
-          batch_size: size of training batches
+    Attributes:
+      x_train: array of data points to use for training
+      y_train: array of labels to use for training
+      x_test: array of data points to use for testing
+      y_test: array of labels to use for testing
+      batch_size: size of training batches
     """
 
-    def __init__(self, x_train, y_train, x_test, y_test, batch_size, augmentation=False, dataset='cifar10'):
+    def __init__(
+        self,
+        x_train,
+        y_train,
+        x_test,
+        y_test,
+        batch_size,
+        augmentation=False,
+        dataset="cifar10",
+    ):
         self.x_train = x_train
         self.y_train = y_train
         self.x_test = x_test
         self.y_test = y_test
         self.batch_size = batch_size
-        self.augmentation = (augmentation and dataset == 'cifar10')
+        self.augmentation = augmentation and dataset == "cifar10"
         self.dataset = dataset
 
         if self.augmentation:
             from keras.preprocessing.image import ImageDataGenerator
+
             self.datagen = ImageDataGenerator(
                 featurewise_center=False,  # set input mean to 0 over the dataset
                 samplewise_center=False,  # set each sample mean to 0
@@ -35,7 +45,8 @@ class Data(object):
                 width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
                 height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
                 horizontal_flip=True,  # randomly flip images
-                vertical_flip=False)  # randomly flip images
+                vertical_flip=False,
+            )  # randomly flip images
             self.datagen.fit(self.x_train)
         else:
             self.datagen = None
@@ -55,7 +66,9 @@ class Data(object):
 
     def generate_augmented_data(self):
         """Yields batches of augmented training data until none are left."""
-        output_generator = self.datagen.flow(self.x_train, self.y_train, batch_size=self.batch_size)
+        output_generator = self.datagen.flow(
+            self.x_train, self.y_train, batch_size=self.batch_size
+        )
         for j in range(self.x_train.shape[0] // self.batch_size):
             x_b, y_b = next(output_generator)
             x_b = x_b.reshape(-1, 32 * 32 * 3)
@@ -97,7 +110,7 @@ class Data(object):
             return self.x_train
 
     def get_test_data(self):
-        if self.augmentation and self.dataset == 'cifar10':
+        if self.augmentation and self.dataset == "cifar10":
             return self.x_test.reshape(-1, 32 * 32 * 3)
         else:
             return self.x_test
@@ -110,7 +123,7 @@ class Data(object):
 
     def get_num_samples(self, data):
         """Input: dataset consisting of a numpy array or list of numpy arrays.
-            Output: number of samples in the dataset"""
+        Output: number of samples in the dataset"""
         if self.is_numpy_array(data):
             return len(data)
         else:

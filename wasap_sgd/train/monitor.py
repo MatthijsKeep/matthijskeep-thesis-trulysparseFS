@@ -8,7 +8,7 @@ import time
 
 
 class Monitor(object):
-    """ Class that monitors CPU utilization for a given time """
+    """Class that monitors CPU utilization for a given time"""
 
     def __init__(self, sampling_rate=None, pid=None, save_filename=None):
         self.sampling_rate = sampling_rate if sampling_rate is not None else 1
@@ -23,9 +23,7 @@ class Monitor(object):
         self.samples = []
 
     def _monitor(self):
-
         while not self.should_stop:
-
             # get the name of the file executed
             name = self.cpu_process.name()
 
@@ -35,7 +33,7 @@ class Monitor(object):
             except psutil.AccessDenied:
                 cores = 0
                 # get the CPU usage percentage
-            cpu_usage = self.cpu_process.cpu_percent()/cores
+            cpu_usage = self.cpu_process.cpu_percent() / cores
 
             # get the number of total threads spawned by this process
             n_threads = self.cpu_process.num_threads()
@@ -47,7 +45,9 @@ class Monitor(object):
 
             try:
                 # get the memory usage in MB
-                memory_usage = self.cpu_process.memory_full_info().uss / (1024. * 1024.)
+                memory_usage = self.cpu_process.memory_full_info().uss / (
+                    1024.0 * 1024.0
+                )
             except psutil.AccessDenied:
                 memory_usage = 0
 
@@ -68,10 +68,17 @@ class Monitor(object):
             status = self.cpu_process.status()
 
             current_sample = {
-                'pid': self.pid, 'name': name, 'create_time': create_time,
-                'cores': cores, 'cpu_usage': cpu_usage, 'status': status, 'nice': nice,
-                'memory_usage': memory_usage, 'read_bytes': read_bytes, 'write_bytes': write_bytes,
-                'n_threads': n_threads
+                "pid": self.pid,
+                "name": name,
+                "create_time": create_time,
+                "cores": cores,
+                "cpu_usage": cpu_usage,
+                "status": status,
+                "nice": nice,
+                "memory_usage": memory_usage,
+                "read_bytes": read_bytes,
+                "write_bytes": write_bytes,
+                "n_threads": n_threads,
             }
 
             self.samples.append(current_sample)

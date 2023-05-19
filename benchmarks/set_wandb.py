@@ -41,7 +41,18 @@ from sklearn.model_selection import train_test_split
 from utils.nn_functions import *
 
 from test import load_in_data, svm_test
-from utils.load_data import load_fashion_mnist_data, load_madelon_data, load_mnist_data, load_usps, load_coil, load_isolet, load_har, load_pcmac, load_smk, load_gla
+from utils.load_data import (
+    load_fashion_mnist_data,
+    load_madelon_data,
+    load_mnist_data,
+    load_usps,
+    load_coil,
+    load_isolet,
+    load_har,
+    load_pcmac,
+    load_smk,
+    load_gla,
+)
 
 
 import copy
@@ -52,12 +63,13 @@ import time
 import json
 import sys
 import wandb
+
 wandb.login()
 import numpy as np
 from numba import njit, prange
 
 stderr = sys.stderr
-sys.stderr = open(os.devnull, 'w')
+sys.stderr = open(os.devnull, "w")
 sys.stderr = stderr
 
 
@@ -94,8 +106,8 @@ def compute_accuracy(activations, y_test):
 @njit(fastmath=True, cache=True)
 def dropout(x, rate):
     noise_shape = x.shape
-    noise = np.random.uniform(0., 1., noise_shape)
-    keep_prob = 1. - rate
+    noise = np.random.uniform(0.0, 1.0, noise_shape)
+    keep_prob = 1.0 - rate
     scale = np.float32(1 / keep_prob)
     keep_mask = noise >= rate
     return x * scale * keep_mask, keep_mask
@@ -103,17 +115,24 @@ def dropout(x, rate):
 
 def create_sparse_weights(epsilon, n_rows, n_cols):
     # He uniform initialization
-    limit = np.sqrt(6. / float(n_rows))
+    limit = np.sqrt(6.0 / float(n_rows))
 
     mask_weights = np.random.rand(n_rows, n_cols)
-    prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections
+    prob = 1 - (epsilon * (n_rows + n_cols)) / (
+        n_rows * n_cols
+    )  # normal to have 8x connections
 
     # generate an Erdos Renyi sparse weights mask
     weights = lil_matrix((n_rows, n_cols))
     n_params = np.count_nonzero(mask_weights[mask_weights >= prob])
     weights[mask_weights >= prob] = np.random.uniform(-limit, limit, n_params)
-    print("Create sparse matrix with ", weights.getnnz(), " connections and ",
-          (weights.getnnz() / (n_rows * n_cols)) * 100, "% density level")
+    print(
+        "Create sparse matrix with ",
+        weights.getnnz(),
+        " connections and ",
+        (weights.getnnz() / (n_rows * n_cols)) * 100,
+        "% density level",
+    )
     weights = weights.tocsr()
     return weights
 
@@ -121,8 +140,12 @@ def create_sparse_weights(epsilon, n_rows, n_cols):
 def array_intersect(a, b):
     # this are for array intersection
     n_rows, n_cols = a.shape
-    dtype = {'names': ['f{}'.format(i) for i in range(n_cols)], 'formats': n_cols * [a.dtype]}
+    dtype = {
+        "names": ["f{}".format(i) for i in range(n_cols)],
+        "formats": n_cols * [a.dtype],
+    }
     return np.in1d(a.view(dtype), b.view(dtype))  # boolean return
+
 
 def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
     """
@@ -136,7 +159,7 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
 
     :return: (float) Classification accuracy
     """
-            # change x_train and x_test to only have the selected features
+    # change x_train and x_test to only have the selected features
     # print(selected_features)
     # check how many of the selected features overlap with the informative features, given that the informative features are the first K features
     informative_features = np.arange(0, K)
@@ -151,14 +174,27 @@ def evaluate_fs(x_train, x_test, y_train, y_test, selected_features, K):
     y_test_new = np.argmax(y_test, axis=1)
 
     # take random subset of the data (20%)
-    x_train_new, _, y_train_new, _ = train_test_split(x_train_new, y_train_new, test_size=0.8, stratify=y_train_new)
+    x_train_new, _, y_train_new, _ = train_test_split(
+        x_train_new, y_train_new, test_size=0.8, stratify=y_train_new
+    )
 
-    return round(sum(svm_test(x_train_new, y_train_new, x_test_new, y_test_new) for _ in range(5)) / 5, 4), pct_correct
+    return (
+        round(
+            sum(
+                svm_test(x_train_new, y_train_new, x_test_new, y_test_new)
+                for _ in range(5)
+            )
+            / 5,
+            4,
+        ),
+        pct_correct,
+    )
+
 
 def select_input_neurons(weights, k):
     """
     Function to select the k most important neurons in a sparse matrix, and returns a sparse matrix with the same shape as weights, but with only the k most important connections.
-    Args:   
+    Args:
             weights: csr_matrix
             k: number of neurons to select
 
@@ -167,7 +203,9 @@ def select_input_neurons(weights, k):
             important_neurons: csr_matrix with only the k most important connections
     """
 
-    sum_weights = np.abs(weights).sum(axis=1)  # get the sum of the absolute values of the weights for each neuron
+    sum_weights = np.abs(weights).sum(
+        axis=1
+    )  # get the sum of the absolute values of the weights for each neuron
     print(f"The input neuron with the highest weight is: {np.argmax(sum_weights)}")
     important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:k]
     # important_neurons = np.abs(copy.deepcopy(network.w[1])).sum(axis=1)
@@ -175,7 +213,7 @@ def select_input_neurons(weights, k):
     return important_neurons_idx, sum_weights
 
 
-def setup_logger(args): 
+def setup_logger(args):
     global logger
     if logger == None:
         logger = logging.getLogger()
@@ -189,12 +227,13 @@ def setup_logger(args):
     args_copy.iters = 1
     args_copy.verbose = False
     args_copy.log_interval = 1
-    log_path = './logs/{0}.log'.format('ae')
+    log_path = "./logs/{0}.log".format("ae")
     logger.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S')
+    formatter = logging.Formatter(fmt="%(asctime)s: %(message)s", datefmt="%H:%M:%S")
     fh = logging.FileHandler(log_path)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
+
 
 def print_and_log(msg):
     global logger
@@ -202,9 +241,12 @@ def print_and_log(msg):
     logger.info(msg)
 
 
-if not os.path.exists('./models'): os.mkdir('./models')
-if not os.path.exists('./logs'): os.mkdir('./logs')
+if not os.path.exists("./models"):
+    os.mkdir("./models")
+if not os.path.exists("./logs"):
+    os.mkdir("./logs")
 logger = None
+
 
 class SET_MLP:
     def __init__(self, dimensions, activations, epsilon=20, config=None):
@@ -228,7 +270,7 @@ class SET_MLP:
         """
         self.n_layers = len(dimensions)
         self.loss = None
-        self.dropout_rate = 0.  # dropout rate
+        self.dropout_rate = 0.0  # dropout rate
         self.learning_rate = None
         self.momentum = None
         self.weight_decay = None
@@ -249,8 +291,10 @@ class SET_MLP:
         # Activations are also initiated by index. For the example we will have activations[2] and activations[3]
         self.activations = {}
         for i in range(len(dimensions) - 1):
-            self.w[i + 1] = create_sparse_weights(self.epsilon, dimensions[i], dimensions[i + 1])  # create sparse weight matrices
-            self.b[i + 1] = np.zeros(dimensions[i + 1], dtype='float32')
+            self.w[i + 1] = create_sparse_weights(
+                self.epsilon, dimensions[i], dimensions[i + 1]
+            )  # create sparse weight matrices
+            self.b[i + 1] = np.zeros(dimensions[i + 1], dtype="float32")
             self.activations[i + 2] = activations[i]
 
     def _feed_forward(self, x, drop=False):
@@ -293,20 +337,20 @@ class SET_MLP:
         :param y_true: (array) One hot encoded truth vector.
         :return:
         """
-        keep_prob = 1.
+        keep_prob = 1.0
         if self.dropout_rate > 0:
-            keep_prob = np.float32(1. - self.dropout_rate)
+            keep_prob = np.float32(1.0 - self.dropout_rate)
 
         # Determine partial derivative and delta for the output layer.
         # delta output layer
         delta = self.loss.delta(y_true, a[self.n_layers])
-        dw = coo_matrix(self.w[self.n_layers - 1], dtype='float32')
+        dw = coo_matrix(self.w[self.n_layers - 1], dtype="float32")
         # compute backpropagation updates
-        backpropagation_updates_numpy(a[self.n_layers - 1], delta, dw.row, dw.col, dw.data)
+        backpropagation_updates_numpy(
+            a[self.n_layers - 1], delta, dw.row, dw.col, dw.data
+        )
 
-        update_params = {
-            self.n_layers - 1: (dw.tocsr(),  np.mean(delta, axis=0))
-        }
+        update_params = {self.n_layers - 1: (dw.tocsr(), np.mean(delta, axis=0))}
 
         # In case of three layer net will iterate over i = 2 and i = 1
         # Determine partial derivative and delta for the rest of the layers.
@@ -314,18 +358,22 @@ class SET_MLP:
         for i in reversed(range(2, self.n_layers)):
             # dropout for the backpropagation step
             if keep_prob != 1:
-                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(z[i])
+                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(
+                    z[i]
+                )
                 delta = delta * masks[i]
                 delta /= keep_prob
             else:
-                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(z[i])
+                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(
+                    z[i]
+                )
 
-            dw = coo_matrix(self.w[i - 1], dtype='float32')
+            dw = coo_matrix(self.w[i - 1], dtype="float32")
 
             # compute backpropagation updates
             backpropagation_updates_numpy(a[i - 1], delta, dw.row, dw.col, dw.data)
 
-            update_params[i - 1] = (dw.tocsr(),  np.mean(delta, axis=0))
+            update_params[i - 1] = (dw.tocsr(), np.mean(delta, axis=0))
         # print("right before the _update_w_b function")
         for k, v in update_params.items():
             self._update_w_b(k, v[0], v[1])
@@ -343,18 +391,36 @@ class SET_MLP:
 
         # perform the update with momentum
         if index not in self.pdw:
-            self.pdw[index] = - self.learning_rate * dw
-            self.pdd[index] = - self.learning_rate * delta
+            self.pdw[index] = -self.learning_rate * dw
+            self.pdd[index] = -self.learning_rate * delta
         else:
             self.pdw[index] = self.momentum * self.pdw[index] - self.learning_rate * dw
-            self.pdd[index] = self.momentum * self.pdd[index] - self.learning_rate * delta
+            self.pdd[index] = (
+                self.momentum * self.pdd[index] - self.learning_rate * delta
+            )
 
         self.w[index] += self.pdw[index] - self.weight_decay * self.w[index]
         self.b[index] += self.pdd[index] - self.weight_decay * self.b[index]
 
-    def fit(self, x, y_true, x_test, y_test, loss, epochs, batch_size, learning_rate=1e-3, momentum=0.9,
-            weight_decay=0.0002, zeta=0.3, dropoutrate=0., testing=True, save_filename="", monitor=False,
-            config=None):
+    def fit(
+        self,
+        x,
+        y_true,
+        x_test,
+        y_test,
+        loss,
+        epochs,
+        batch_size,
+        learning_rate=1e-3,
+        momentum=0.9,
+        weight_decay=0.0002,
+        zeta=0.3,
+        dropoutrate=0.0,
+        testing=True,
+        save_filename="",
+        monitor=False,
+        config=None,
+    ):
         """
         :param x: (array) Containing parameters
         :param y_true: (array) Containing one hot encoded labels.
@@ -408,7 +474,7 @@ class SET_MLP:
                 # print("right before the _feed_forward function")
                 z, a, masks = self._feed_forward(x_[k:l], True)
                 # print("right before the _back_prop function")
-                self._back_prop(z, a, masks,  y_[k:l])
+                self._back_prop(z, a, masks, y_[k:l])
 
             t2 = datetime.datetime.now()
 
@@ -436,21 +502,31 @@ class SET_MLP:
                 metrics[i, 2] = accuracy_train
                 metrics[i, 3] = accuracy_test
                 wb_metrics = {
-                    'loss_train': loss_train,
-                    'loss_test': loss_test,
-                    'accuracy_train': accuracy_train,
-                    'accuracy_test': accuracy_test,
-                    'epoch': i
+                    "loss_train": loss_train,
+                    "loss_test": loss_test,
+                    "accuracy_train": accuracy_train,
+                    "accuracy_test": accuracy_test,
+                    "epoch": i,
                 }
                 wandb.log(wb_metrics)
 
                 if i % 2 == 0:
-                    selected_features, importances = select_input_neurons(copy.deepcopy(self.w[1]), config.K)
-                    accuracy_topk, pct_correct = evaluate_fs(x, x_test, y_true, y_test, selected_features, config.K)
-                    print(f"Out of the top {config.K} features, {pct_correct} are correct")
-                    wandb.log({"accuracy_topk": accuracy_topk,
-                               "pct_correct": pct_correct,
-                               "epoch": i})
+                    selected_features, importances = select_input_neurons(
+                        copy.deepcopy(self.w[1]), config.K
+                    )
+                    accuracy_topk, pct_correct = evaluate_fs(
+                        x, x_test, y_true, y_test, selected_features, config.K
+                    )
+                    print(
+                        f"Out of the top {config.K} features, {pct_correct} are correct"
+                    )
+                    wandb.log(
+                        {
+                            "accuracy_topk": accuracy_topk,
+                            "pct_correct": pct_correct,
+                            "epoch": i,
+                        }
+                    )
                     if pct_correct > max_pct_correct:
                         max_pct_correct = pct_correct
                         early_stopping_counter = 0
@@ -458,14 +534,16 @@ class SET_MLP:
                         max_accuracy_topk = accuracy_topk
                         early_stopping_counter = 0
 
-                print(f"Testing time: {t4 - t3}\n; Loss test: {loss_test}; \n"
-                                 f"Accuracy test: {accuracy_test}; \n"
-                                 f"Maximum accuracy val: {maximum_accuracy}")
-                
-
+                print(
+                    f"Testing time: {t4 - t3}\n; Loss test: {loss_test}; \n"
+                    f"Accuracy test: {accuracy_test}; \n"
+                    f"Maximum accuracy val: {maximum_accuracy}"
+                )
 
             t5 = datetime.datetime.now()
-            if i < epochs - 1:# do not change connectivity pattern after the last epoch
+            if (
+                i < epochs - 1
+            ):  # do not change connectivity pattern after the last epoch
                 # self.weights_evolution_I() # this implementation is more didactic, but slow.
                 self.weights_evolution_II()  # this implementation has the same behaviour as the one above, but it is much faster.
             t6 = datetime.datetime.now()
@@ -488,7 +566,13 @@ class SET_MLP:
 
         largest_negative = values[int((1 - self.zeta) * first_zero_pos)]
         smallest_positive = values[
-            int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
+            int(
+                min(
+                    values.shape[0] - 1,
+                    last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos),
+                )
+            )
+        ]
 
         wlil = self.w[1].tolil()
         wdok = dok_matrix((self.dimensions[0], self.dimensions[1]), dtype="float32")
@@ -505,19 +589,28 @@ class SET_MLP:
     def weights_evolution_I(self):
         # this represents the core of the SET procedure. It removes the weights closest to zero in each layer and add new random weights
         for i in range(1, self.n_layers - 1):
-
             values = np.sort(self.w[i].data)
             first_zero_pos = find_first_pos(values, 0)
             last_zero_pos = find_last_pos(values, 0)
 
             largest_negative = values[int((1 - self.zeta) * first_zero_pos)]
             smallest_positive = values[
-                int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
+                int(
+                    min(
+                        values.shape[0] - 1,
+                        last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos),
+                    )
+                )
+            ]
 
             wlil = self.w[i].tolil()
             pdwlil = self.pdw[i].tolil()
-            wdok = dok_matrix((self.dimensions[i - 1], self.dimensions[i]), dtype="float32")
-            pdwdok = dok_matrix((self.dimensions[i - 1], self.dimensions[i]), dtype="float32")
+            wdok = dok_matrix(
+                (self.dimensions[i - 1], self.dimensions[i]), dtype="float32"
+            )
+            pdwdok = dok_matrix(
+                (self.dimensions[i - 1], self.dimensions[i]), dtype="float32"
+            )
 
             # remove the weights closest to zero
             keep_connections = 0
@@ -527,13 +620,13 @@ class SET_MLP:
                         wdok[ik, jk] = val
                         pdwdok[ik, jk] = pdwlil[ik, jk]
                         keep_connections += 1
-            limit = np.sqrt(6. / float(self.dimensions[i]))
+            limit = np.sqrt(6.0 / float(self.dimensions[i]))
 
             # add new random connections
             for kk in range(self.w[i].data.shape[0] - keep_connections):
                 ik = np.random.randint(0, self.dimensions[i - 1])
                 jk = np.random.randint(0, self.dimensions[i])
-                while (wdok[ik, jk] != 0):
+                while wdok[ik, jk] != 0:
                     ik = np.random.randint(0, self.dimensions[i - 1])
                     jk = np.random.randint(0, self.dimensions[i])
                 wdok[ik, jk] = np.random.uniform(-limit, limit)
@@ -548,86 +641,119 @@ class SET_MLP:
         for i in range(1, self.n_layers - 1):
             # uncomment line below to stop evolution of dense weights more than 80% non-zeros
             # if self.w[i].count_nonzero() / (self.w[i].get_shape()[0]*self.w[i].get_shape()[1]) < 0.8:
-                t_ev_1 = datetime.datetime.now()
-                # converting to COO form - Added by Amar
-                wcoo = self.w[i].tocoo()
-                vals_w = wcoo.data
-                rows_w = wcoo.row
-                cols_w = wcoo.col
+            t_ev_1 = datetime.datetime.now()
+            # converting to COO form - Added by Amar
+            wcoo = self.w[i].tocoo()
+            vals_w = wcoo.data
+            rows_w = wcoo.row
+            cols_w = wcoo.col
 
-                print(i)
-                print(self.pdw)
-                pdcoo = self.pdw[i].tocoo()
-                vals_pd = pdcoo.data
-                rows_pd = pdcoo.row
-                cols_pd = pdcoo.col
-                # print("Number of non zeros in W and PD matrix before evolution in layer",i,[np.size(valsW), np.size(valsPD)])
-                values = np.sort(self.w[i].data)
-                first_zero_pos = find_first_pos(values, 0)
-                last_zero_pos = find_last_pos(values, 0)
+            print(i)
+            print(self.pdw)
+            pdcoo = self.pdw[i].tocoo()
+            vals_pd = pdcoo.data
+            rows_pd = pdcoo.row
+            cols_pd = pdcoo.col
+            # print("Number of non zeros in W and PD matrix before evolution in layer",i,[np.size(valsW), np.size(valsPD)])
+            values = np.sort(self.w[i].data)
+            first_zero_pos = find_first_pos(values, 0)
+            last_zero_pos = find_last_pos(values, 0)
 
-                largest_negative = values[int((1-self.zeta) * first_zero_pos)]
-                smallest_positive = values[int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
+            largest_negative = values[int((1 - self.zeta) * first_zero_pos)]
+            smallest_positive = values[
+                int(
+                    min(
+                        values.shape[0] - 1,
+                        last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos),
+                    )
+                )
+            ]
 
-                #remove the weights (W) closest to zero and modify PD as well
-                vals_w_new = vals_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
-                rows_w_new = rows_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
-                cols_w_new = cols_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
+            # remove the weights (W) closest to zero and modify PD as well
+            vals_w_new = vals_w[
+                (vals_w > smallest_positive) | (vals_w < largest_negative)
+            ]
+            rows_w_new = rows_w[
+                (vals_w > smallest_positive) | (vals_w < largest_negative)
+            ]
+            cols_w_new = cols_w[
+                (vals_w > smallest_positive) | (vals_w < largest_negative)
+            ]
 
-                new_w_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
-                old_pd_row_col_index = np.stack((rows_pd, cols_pd), axis=-1)
+            new_w_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
+            old_pd_row_col_index = np.stack((rows_pd, cols_pd), axis=-1)
 
-                new_pd_row_col_index_flag = array_intersect(old_pd_row_col_index, new_w_row_col_index)  # careful about order
+            new_pd_row_col_index_flag = array_intersect(
+                old_pd_row_col_index, new_w_row_col_index
+            )  # careful about order
 
-                vals_pd_new = vals_pd[new_pd_row_col_index_flag]
-                rows_pd_new = rows_pd[new_pd_row_col_index_flag]
-                cols_pd_new = cols_pd[new_pd_row_col_index_flag]
+            vals_pd_new = vals_pd[new_pd_row_col_index_flag]
+            rows_pd_new = rows_pd[new_pd_row_col_index_flag]
+            cols_pd_new = cols_pd[new_pd_row_col_index_flag]
 
-                self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)), (self.dimensions[i - 1], self.dimensions[i])).tocsr()
+            self.pdw[i] = coo_matrix(
+                (vals_pd_new, (rows_pd_new, cols_pd_new)),
+                (self.dimensions[i - 1], self.dimensions[i]),
+            ).tocsr()
 
-                # if i == 1:
-                #     self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
-                #                                                    (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
-                #     np.savez_compressed(self.save_filename + "_input_connections.npz",
-                #                         inputLayerConnections=self.input_layer_connections)
+            # if i == 1:
+            #     self.input_layer_connections.append(coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
+            #                                                    (self.dimensions[i - 1], self.dimensions[i])).getnnz(axis=1))
+            #     np.savez_compressed(self.save_filename + "_input_connections.npz",
+            #                         inputLayerConnections=self.input_layer_connections)
 
-                # add new random connections
-                keep_connections = np.size(rows_w_new)
-                length_random = vals_w.shape[0]-keep_connections
-                limit = np.sqrt(6. / float(self.dimensions[i - 1]))
-                random_vals = np.random.uniform(-limit, limit, length_random)
-                zero_vals = 0*random_vals  # explicit zeros
+            # add new random connections
+            keep_connections = np.size(rows_w_new)
+            length_random = vals_w.shape[0] - keep_connections
+            limit = np.sqrt(6.0 / float(self.dimensions[i - 1]))
+            random_vals = np.random.uniform(-limit, limit, length_random)
+            zero_vals = 0 * random_vals  # explicit zeros
 
-                # adding  (wdok[ik,jk]!=0): condition
-                while length_random>0:
-                    ik = np.random.randint(0, self.dimensions[i - 1], size=length_random, dtype='int32')
-                    jk = np.random.randint(0, self.dimensions[i], size=length_random, dtype='int32')
+            # adding  (wdok[ik,jk]!=0): condition
+            while length_random > 0:
+                ik = np.random.randint(
+                    0, self.dimensions[i - 1], size=length_random, dtype="int32"
+                )
+                jk = np.random.randint(
+                    0, self.dimensions[i], size=length_random, dtype="int32"
+                )
 
-                    random_w_row_col_index = np.stack((ik, jk), axis=-1)
-                    random_w_row_col_index = np.unique(random_w_row_col_index, axis=0)  # removing duplicates in new rows&cols
-                    oldW_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
+                random_w_row_col_index = np.stack((ik, jk), axis=-1)
+                random_w_row_col_index = np.unique(
+                    random_w_row_col_index, axis=0
+                )  # removing duplicates in new rows&cols
+                oldW_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
 
-                    unique_flag = ~array_intersect(random_w_row_col_index, oldW_row_col_index)  # careful about order & tilda
+                unique_flag = ~array_intersect(
+                    random_w_row_col_index, oldW_row_col_index
+                )  # careful about order & tilda
 
-                    ik_new = random_w_row_col_index[unique_flag][:,0]
-                    jk_new = random_w_row_col_index[unique_flag][:,1]
-                    # be careful - row size and col size needs to be verified
-                    rows_w_new = np.append(rows_w_new, ik_new)
-                    cols_w_new = np.append(cols_w_new, jk_new)
+                ik_new = random_w_row_col_index[unique_flag][:, 0]
+                jk_new = random_w_row_col_index[unique_flag][:, 1]
+                # be careful - row size and col size needs to be verified
+                rows_w_new = np.append(rows_w_new, ik_new)
+                cols_w_new = np.append(cols_w_new, jk_new)
 
-                    length_random = vals_w.shape[0]-np.size(rows_w_new) # this will constantly reduce lengthRandom
+                length_random = vals_w.shape[0] - np.size(
+                    rows_w_new
+                )  # this will constantly reduce lengthRandom
 
-                # adding all the values along with corresponding row and column indices - Added by Amar
-                vals_w_new = np.append(vals_w_new, random_vals) # be careful - we can add to an existing link ?
-                # vals_pd_new = np.append(vals_pd_new, zero_vals) # be careful - adding explicit zeros - any reason??
-                if vals_w_new.shape[0] != rows_w_new.shape[0]:
-                    print("not good")
-                self.w[i] = coo_matrix((vals_w_new, (rows_w_new, cols_w_new)), (self.dimensions[i-1], self.dimensions[i])).tocsr()
+            # adding all the values along with corresponding row and column indices - Added by Amar
+            vals_w_new = np.append(
+                vals_w_new, random_vals
+            )  # be careful - we can add to an existing link ?
+            # vals_pd_new = np.append(vals_pd_new, zero_vals) # be careful - adding explicit zeros - any reason??
+            if vals_w_new.shape[0] != rows_w_new.shape[0]:
+                print("not good")
+            self.w[i] = coo_matrix(
+                (vals_w_new, (rows_w_new, cols_w_new)),
+                (self.dimensions[i - 1], self.dimensions[i]),
+            ).tocsr()
 
-                # print("Number of non zeros in W and PD matrix after evolution in layer",i,[(self.w[i].data.shape[0]), (self.pdw[i].data.shape[0])])
+            # print("Number of non zeros in W and PD matrix after evolution in layer",i,[(self.w[i].data.shape[0]), (self.pdw[i].data.shape[0])])
 
-                t_ev_2 = datetime.datetime.now()
-                print("Weights evolution time for layer", i,"is", t_ev_2 - t_ev_1)
+            t_ev_2 = datetime.datetime.now()
+            print("Weights evolution time for layer", i, "is", t_ev_2 - t_ev_1)
 
     def predict(self, x_test, y_test, batch_size=100):
         """
@@ -640,7 +766,7 @@ class SET_MLP:
         activations = np.zeros((y_test.shape[0], y_test.shape[1]))
 
         # also work with batch sizes that do not exactly divide the number of test cases
-        
+
         # calculate number of batches (without the overflow) as variable j
         j_max = x_test.shape[0] // batch_size
 
@@ -649,7 +775,7 @@ class SET_MLP:
             l = (j + 1) * batch_size
             _, a_test, _ = self._feed_forward(x_test[k:l], drop=False)
             activations[k:l] = a_test[self.n_layers]
-        
+
         # add the remaining test cases (after the loop above has run j times)
         if x_test.shape[0] % batch_size != 0:
             k = j_max * batch_size
@@ -678,8 +804,8 @@ def load_fashion_mnist_data(no_training_samples, no_testing_samples):
     y_test = data["Y_test"][index_test[0:no_testing_samples], :]
 
     # normalize in 0..1
-    x_train = x_train.astype('float64') / 255.
-    x_test = x_test.astype('float64') / 255.
+    x_train = x_train.astype("float64") / 255.0
+    x_test = x_test.astype("float64") / 255.0
 
     return x_train, y_train, x_test, y_test
 
@@ -695,7 +821,7 @@ if __name__ == "__main__":
     runs = 10
     svm_accs = np.zeros(runs)
     data = args.data
-    K = 20 if data == 'madelon' else 50
+    K = 20 if data == "madelon" else 50
 
     # load data
     no_training_samples = 50000  # max 60000 for Fashion MNIST
@@ -715,34 +841,41 @@ if __name__ == "__main__":
     for i in range(runs):
         # TODO - standardize all data loading functions to 1 function
 
-        if data == 'fashion_mnist':
-            x_train, y_train, x_test, y_test = load_fashion_mnist_data(no_training_samples, no_testing_samples)
-        elif data == 'mnist':
-            x_train, y_train, x_test, y_test = load_mnist_data(no_training_samples, no_testing_samples)
-        elif data == 'USPS':
+        if data == "fashion_mnist":
+            x_train, y_train, x_test, y_test = load_fashion_mnist_data(
+                no_training_samples, no_testing_samples
+            )
+        elif data == "mnist":
+            x_train, y_train, x_test, y_test = load_mnist_data(
+                no_training_samples, no_testing_samples
+            )
+        elif data == "USPS":
             x_train, y_train, x_test, y_test = load_usps()
-        elif data == 'coil':
+        elif data == "coil":
             x_train, y_train, x_test, y_test = load_coil()
-        elif data == 'isolet':
+        elif data == "isolet":
             x_train, y_train, x_test, y_test = load_isolet()
-        elif data == 'har':
+        elif data == "har":
             x_train, y_train, x_test, y_test = load_har()
-        elif data == 'pcmac':
+        elif data == "pcmac":
             x_train, y_train, x_test, y_test = load_pcmac()
-        elif data == 'smk':
+        elif data == "smk":
             x_train, y_train, x_test, y_test = load_smk()
-        elif data == 'gla':
+        elif data == "gla":
             x_train, y_train, x_test, y_test = load_gla()
-        elif data == 'madelon':
+        elif data == "madelon":
             x_train, y_train, x_test, y_test = load_madelon_data()
 
         np.random.seed(i)
 
         # create SET-MLP (MLP with adaptive sparse connectivity trained with Sparse Evolutionary Training)
         print(x_train.shape[1])
-        set_mlp = SET_MLP((x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
-                          (AlternatedLeftReLU(-allrelu_slope), Softmax), epsilon=epsilon,
-                          config=None)
+        set_mlp = SET_MLP(
+            (x_train.shape[1], no_hidden_neurons_layer, y_train.shape[1]),
+            (AlternatedLeftReLU(-allrelu_slope), Softmax),
+            epsilon=epsilon,
+            config=None,
+        )
 
         start_time = time.time()
         # train SET-MLP
@@ -764,16 +897,22 @@ if __name__ == "__main__":
             monitor=True,
         )
 
-        selected_features, importances = select_input_neurons(copy.deepcopy(set_mlp.w[1]), args.K)
+        selected_features, importances = select_input_neurons(
+            copy.deepcopy(set_mlp.w[1]), args.K
+        )
         # evaluate FS using the selected features
-        accuracy_topk, pct_correct = evaluate_fs(x_train, x_test, y_train, y_test, selected_features)
+        accuracy_topk, pct_correct = evaluate_fs(
+            x_train, x_test, y_train, y_test, selected_features
+        )
 
         step_time = time.time() - start_time
         print("\nTotal training time: ", step_time)
         sum_training_time += step_time
 
         sum_weights = np.abs(set_mlp.w[1]).sum(axis=1)
-        selected_features = important_neurons_idx = np.argsort(sum_weights, axis=0)[::-1][:K]
+        selected_features = important_neurons_idx = np.argsort(sum_weights, axis=0)[
+            ::-1
+        ][:K]
         # test SET-MLP by selecting the top K features from the input layer
         train_X_new = np.squeeze(x_train[:, selected_features])
         test_X_new = np.squeeze(x_test[:, selected_features])
@@ -782,7 +921,9 @@ if __name__ == "__main__":
         y_test = np.argmax(y_test, axis=1)
 
         # TODO - Test if the shapes going into the SVM are the ones you expect so (n_samples, 20) and (n_samples,)
-        print(f"Shape going into the SVM: {train_X_new.shape} and {y_train.shape} and {test_X_new.shape} and {y_test.shape}")
+        print(
+            f"Shape going into the SVM: {train_X_new.shape} and {y_train.shape} and {test_X_new.shape} and {y_test.shape}"
+        )
 
         svm_acc = svm_test(train_X_new, y_train, test_X_new, y_test)
         svm_accs[i] = svm_acc

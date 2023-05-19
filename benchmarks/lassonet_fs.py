@@ -4,6 +4,7 @@ from test import load_in_data, svm_test
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def lassonet_fs(data, K):
     """
     Return new train and test data with K features selected using the lassonet algorithm
@@ -16,10 +17,11 @@ def lassonet_fs(data, K):
     # make labels from one-hot encoding to single integer
     train_y = np.argmax(train_y, axis=1)
     test_y = np.argmax(test_y, axis=1)
-    # TODO - Turn off verbose ???? 
-    model = LassoNetClassifierCV(M=K,
-    hidden_dims=(10,),
-    verbose=0,
+    # TODO - Turn off verbose ????
+    model = LassoNetClassifierCV(
+        M=K,
+        hidden_dims=(10,),
+        verbose=0,
     )
     path = model.path(train_X, train_y)
 

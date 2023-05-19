@@ -4,10 +4,10 @@ import logging
 from os.path import abspath
 
 level_map = {
-    'debug': logging.DEBUG,
-    'info': logging.INFO,
-    'warn': logging.WARNING,
-    'error': logging.ERROR,
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warn": logging.WARNING,
+    "error": logging.ERROR,
 }
 
 base_prefix = "{ptype} {world}:{parent}:{process}"
@@ -36,12 +36,14 @@ class ElapsedTimeFormatter(logging.Formatter):
 
 
 class MPIFileHandler(logging.FileHandler):
-    def __init__(self,
-                 filename,
-                 mode=MPI.MODE_WRONLY | MPI.MODE_CREATE | MPI.MODE_APPEND,
-                 encoding='utf-8',
-                 delay=False,
-                 comm=MPI.COMM_WORLD):
+    def __init__(
+        self,
+        filename,
+        mode=MPI.MODE_WRONLY | MPI.MODE_CREATE | MPI.MODE_APPEND,
+        encoding="utf-8",
+        delay=False,
+        comm=MPI.COMM_WORLD,
+    ):
         self.baseFilename = abspath(filename)
         self.mode = mode
         self.encoding = encoding
@@ -75,7 +77,9 @@ class MPIFileHandler(logging.FileHandler):
             self.stream = None
 
 
-def initialize_logger(filename=None, file_level='info', stream=True, stream_level='info'):
+def initialize_logger(
+    filename=None, file_level="info", stream=True, stream_level="info"
+):
     global file_handler
     global stream_handler
     level = get_log_level(file_level)
@@ -90,16 +94,20 @@ def initialize_logger(filename=None, file_level='info', stream=True, stream_leve
     set_logging_prefix(MPI.COMM_WORLD.rank)
 
 
-def get_log_level(levelstr='info'):
+def get_log_level(levelstr="info"):
     levelstr = levelstr.lower()
     return level_map[levelstr]
 
 
-def set_logging_prefix(world_rank, parent_rank='-', process_rank='-', process_type='P'):
+def set_logging_prefix(world_rank, parent_rank="-", process_rank="-", process_type="P"):
     global file_handler
     global stream_handler
-    prefix = base_prefix.format(ptype=process_type, world=world_rank, parent=parent_rank, process=process_rank)
-    formatter = ElapsedTimeFormatter('%(asctime)s ' + prefix + ' [%(levelname)s] %(message)s')
+    prefix = base_prefix.format(
+        ptype=process_type, world=world_rank, parent=parent_rank, process=process_rank
+    )
+    formatter = ElapsedTimeFormatter(
+        "%(asctime)s " + prefix + " [%(levelname)s] %(message)s"
+    )
     if file_handler is not None:
         file_handler.setFormatter(formatter)
     if stream_handler is not None:

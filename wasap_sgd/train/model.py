@@ -8,7 +8,7 @@ from numba import njit, prange
 from utils.nn_functions import MSE, CrossEntropy
 
 stderr = sys.stderr
-sys.stderr = open(os.devnull, 'w')
+sys.stderr = open(os.devnull, "w")
 sys.stderr = stderr
 
 
@@ -45,8 +45,8 @@ def compute_accuracy(activations, y_test):
 @njit(fastmath=True, cache=True)
 def dropout(x, rate):
     noise_shape = x.shape
-    noise = np.random.uniform(0., 1., noise_shape)
-    keep_prob = 1. - rate
+    noise = np.random.uniform(0.0, 1.0, noise_shape)
+    keep_prob = 1.0 - rate
     scale = np.float32(1 / keep_prob)
     keep_mask = noise >= rate
     return x * scale * keep_mask, keep_mask
@@ -71,25 +71,29 @@ def retain_valid_updates(weights, gradient):
 
 def create_sparse_weights_II(epsilon, noRows, noCols):
     # generate an Erdos Renyi sparse weights mask
-    weights=lil_matrix((noRows, noCols))
+    weights = lil_matrix((noRows, noCols))
     for i in range(epsilon * (noRows + noCols)):
-        weights[np.random.randint(0,noRows),np.random.randint(0,noCols)]=np.float64(np.random.randn()/10)
+        weights[
+            np.random.randint(0, noRows), np.random.randint(0, noCols)
+        ] = np.float64(np.random.randn() / 10)
     # print ("Create sparse matrix with ", weights.getnnz(), " connections and ",(weights.getnnz()/(noRows * noCols))*100, "% density level")
-    weights=weights.tocsr()
+    weights = weights.tocsr()
     return weights
 
 
 def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
     # He uniform initialization
-    if weight_init == 'he_uniform':
-        limit = np.sqrt(6. / float(n_rows))
+    if weight_init == "he_uniform":
+        limit = np.sqrt(6.0 / float(n_rows))
 
     # Xavier initialization
-    if weight_init == 'xavier':
-        limit = np.sqrt(6. / (float(n_rows) + float(n_cols)))
+    if weight_init == "xavier":
+        limit = np.sqrt(6.0 / (float(n_rows) + float(n_cols)))
 
     mask_weights = np.random.rand(n_rows, n_cols)
-    prob = 1 - (epsilon * (n_rows + n_cols)) / (n_rows * n_cols)  # normal to have 8x connections
+    prob = 1 - (epsilon * (n_rows + n_cols)) / (
+        n_rows * n_cols
+    )  # normal to have 8x connections
 
     # generate an Erdos Renyi sparse weights mask
     weights = lil_matrix((n_rows, n_cols))
@@ -104,13 +108,15 @@ def create_sparse_weights(epsilon, n_rows, n_cols, weight_init):
 def array_intersect(a, b):
     # this are for array intersection
     n_rows, n_cols = a.shape
-    dtype = {'names': ['f{}'.format(i) for i in range(n_cols)], 'formats': n_cols * [a.dtype]}
+    dtype = {
+        "names": ["f{}".format(i) for i in range(n_cols)],
+        "formats": n_cols * [a.dtype],
+    }
     return np.in1d(a.view(dtype), b.view(dtype))  # boolean return
 
 
 class SETMPIModel(object):
-    """Class that abstract all details of the model
-    """
+    """Class that abstract all details of the model"""
 
     def __init__(self, dimensions, activations, class_weights, **config):
         """
@@ -121,22 +127,24 @@ class SETMPIModel(object):
         self.n_layers = len(dimensions)
 
         self.n_layers = len(dimensions)
-        self.learning_rate = config['lr']
-        self.momentum = config['momentum']
-        self.epochs = config['n_epochs']
-        self.weight_decay = config['weight_decay']
-        self.epsilon = config['epsilon']  # control the sparsity level as discussed in the paper
-        self.zeta = config['zeta']  # the fraction of the weights removed
-        self.dropout_rate = config['dropout_rate']  # dropout rate
+        self.learning_rate = config["lr"]
+        self.momentum = config["momentum"]
+        self.epochs = config["n_epochs"]
+        self.weight_decay = config["weight_decay"]
+        self.epsilon = config[
+            "epsilon"
+        ]  # control the sparsity level as discussed in the paper
+        self.zeta = config["zeta"]  # the fraction of the weights removed
+        self.dropout_rate = config["dropout_rate"]  # dropout rate
         self.dimensions = dimensions
-        self.batch_size = config['batch_size']
-        self.weight_init = config['weight_init']
+        self.batch_size = config["batch_size"]
+        self.weight_init = config["weight_init"]
         self.class_weights = class_weights
-        self.prune = config['prune']
+        self.prune = config["prune"]
         self.base_lr = 0.01
         self.lr_decay = 0.5
-        self.num_workers = config['num_workers']
-        self.momentum_correction = 1.
+        self.num_workers = config["num_workers"]
+        self.momentum_correction = 1.0
 
         self.save_filename = ""
         self.input_layer_connections = []
@@ -156,24 +164,29 @@ class SETMPIModel(object):
         self.activations = {}
 
         for i in range(len(dimensions) - 1):
-            if self.weight_init == 'normal':
-                self.w[i + 1] = create_sparse_weights_II(self.epsilon, dimensions[i],
-                                                         dimensions[i + 1])  # create sparse weight matrices
+            if self.weight_init == "normal":
+                self.w[i + 1] = create_sparse_weights_II(
+                    self.epsilon, dimensions[i], dimensions[i + 1]
+                )  # create sparse weight matrices
             else:
-                self.w[i + 1] = create_sparse_weights(self.epsilon, dimensions[i], dimensions[i + 1],
-                                                      weight_init=self.weight_init)  # create sparse weight matrices
-            self.b[i + 1] = np.zeros(dimensions[i + 1], dtype='float32')
+                self.w[i + 1] = create_sparse_weights(
+                    self.epsilon,
+                    dimensions[i],
+                    dimensions[i + 1],
+                    weight_init=self.weight_init,
+                )  # create sparse weight matrices
+            self.b[i + 1] = np.zeros(dimensions[i + 1], dtype="float32")
             self.activations[i + 2] = activations[i]
 
-        if config['loss'] == 'mse':
+        if config["loss"] == "mse":
             self.loss = MSE(self.activations[self.n_layers])
-        elif config['loss'] == 'cross_entropy':
+        elif config["loss"] == "cross_entropy":
             self.loss = CrossEntropy()
         else:
             raise NotImplementedError("The given loss function is  ot implemented")
 
     def print_metrics(self, metrics):
-        names = ['loss', 'accuracy']
+        names = ["loss", "accuracy"]
         for name, metric in zip(names, metrics):
             logging.info("{0}: {1:.3f}".format(name, metric))
 
@@ -182,24 +195,24 @@ class SETMPIModel(object):
 
     def get_weights(self):
         """
-                Retrieve the network parameters.
-                :return: model parameters.
+        Retrieve the network parameters.
+        :return: model parameters.
         """
 
         params = {
-            'w': self.w,
-            'b': self.b,
-            'pdw': self.pdw,
-            'pdd': self.pdd,
+            "w": self.w,
+            "b": self.b,
+            "pdw": self.pdw,
+            "pdd": self.pdd,
         }
 
         return params
 
     def set_weights(self, params):
-        self.w = params['w']
-        self.b = params['b']
-        self.pdw = params['pdw']
-        self.pdd = params['pdd']
+        self.w = params["w"]
+        self.b = params["b"]
+        self.pdw = params["pdw"]
+        self.pdd = params["pdd"]
 
     def compute_loss(self, y, y_hat):
         return self.loss.loss(y, y_hat)
@@ -242,20 +255,20 @@ class SETMPIModel(object):
         :param y_true: (array) One hot encoded truth vector.
         :return:
         """
-        keep_prob = 1.
+        keep_prob = 1.0
         if self.dropout_rate > 0:
-            keep_prob = np.float32(1. - self.dropout_rate)
+            keep_prob = np.float32(1.0 - self.dropout_rate)
 
         # Determine partial derivative and delta for the output layer.
         # delta output layer
         delta = self.loss.delta(y_true, a[self.n_layers])
-        dw = coo_matrix(self.w[self.n_layers - 1], dtype='float32')
+        dw = coo_matrix(self.w[self.n_layers - 1], dtype="float32")
         # compute backpropagation updates
-        backpropagation_updates_numpy(a[self.n_layers - 1], delta, dw.row, dw.col, dw.data)
+        backpropagation_updates_numpy(
+            a[self.n_layers - 1], delta, dw.row, dw.col, dw.data
+        )
 
-        update_params = {
-            self.n_layers - 1: (dw.tocsr(),  np.mean(delta, axis=0))
-        }
+        update_params = {self.n_layers - 1: (dw.tocsr(), np.mean(delta, axis=0))}
 
         # In case of three layer net will iterate over i = 2 and i = 1
         # Determine partial derivative and delta for the rest of the layers.
@@ -263,30 +276,36 @@ class SETMPIModel(object):
         for i in reversed(range(2, self.n_layers)):
             # dropout for the backpropagation step
             if keep_prob != 1:
-                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(z[i])
+                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(
+                    z[i]
+                )
                 delta = delta * masks[i]
                 delta /= keep_prob
             else:
-                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(z[i])
+                delta = (delta @ self.w[i].transpose()) * self.activations[i].prime(
+                    z[i]
+                )
 
-            dw = coo_matrix(self.w[i - 1], dtype='float32')
+            dw = coo_matrix(self.w[i - 1], dtype="float32")
 
             # compute backpropagation updates
             backpropagation_updates_numpy(a[i - 1], delta, dw.row, dw.col, dw.data)
 
-            update_params[i - 1] = (dw.tocsr(),  np.mean(delta, axis=0))
+            update_params[i - 1] = (dw.tocsr(), np.mean(delta, axis=0))
 
         return update_params
 
     def apply_update(self, gradient, epoch=0, sync=False, retain=False, worker=False):
         """Move weights in the direction of the gradient, by the amount of the
-            learning rate."""
+        learning rate."""
 
         old_lr = self.learning_rate
         if sync and not worker:
             # Leaning rate scheduler
             if epoch <= 5:  # Gradually warmup phase
-                self.learning_rate = self.base_lr * ((self.num_workers - 1.0) * epoch / 5 + 1.0)
+                self.learning_rate = self.base_lr * (
+                    (self.num_workers - 1.0) * epoch / 5 + 1.0
+                )
 
         self.momentum_correction = self.learning_rate / old_lr
 
@@ -295,15 +314,23 @@ class SETMPIModel(object):
             delta = v[1]
 
             if not sync and retain:
-               dw = retain_valid_updates(self.w[index], dw)
+                dw = retain_valid_updates(self.w[index], dw)
 
             # perform the update with momentum
             if not worker and sync:
-                self._update_w_b(index, dw/float(self.num_workers), delta/float(self.num_workers), worker, self.learning_rate)
+                self._update_w_b(
+                    index,
+                    dw / float(self.num_workers),
+                    delta / float(self.num_workers),
+                    worker,
+                    self.learning_rate,
+                )
             else:
                 self._update_w_b(index, dw, delta, worker, self.learning_rate)
 
-    def _update_w_b(self, index, dw, delta, worker=False, learning_rate=0.01, nesterov=False):
+    def _update_w_b(
+        self, index, dw, delta, worker=False, learning_rate=0.01, nesterov=False
+    ):
         """
         Update weights and biases.
         :param index: (int) Number of the layer
@@ -313,15 +340,29 @@ class SETMPIModel(object):
 
         # perform the update with momentum
         if index not in self.pdw:
-            self.pdw[index] = - learning_rate * dw
-            self.pdd[index] = - learning_rate * delta
+            self.pdw[index] = -learning_rate * dw
+            self.pdd[index] = -learning_rate * delta
         else:
-            self.pdw[index] = self.momentum * self.momentum_correction * self.pdw[index] - learning_rate * dw
-            self.pdd[index] = self.momentum * self.momentum_correction * self.pdd[index] - learning_rate * delta
+            self.pdw[index] = (
+                self.momentum * self.momentum_correction * self.pdw[index]
+                - learning_rate * dw
+            )
+            self.pdd[index] = (
+                self.momentum * self.momentum_correction * self.pdd[index]
+                - learning_rate * delta
+            )
 
         if nesterov and not worker:
-            self.w[index] += self.momentum * self.pdw[index] - learning_rate * dw - self.weight_decay * self.w[index]
-            self.b[index] += self.momentum * self.pdd[index] - learning_rate * delta - self.weight_decay * self.b[index]
+            self.w[index] += (
+                self.momentum * self.pdw[index]
+                - learning_rate * dw
+                - self.weight_decay * self.w[index]
+            )
+            self.b[index] += (
+                self.momentum * self.pdd[index]
+                - learning_rate * delta
+                - self.weight_decay * self.b[index]
+            )
         else:
             self.w[index] += self.pdw[index] - self.weight_decay * self.w[index]
             self.b[index] += self.pdd[index] - self.weight_decay * self.b[index]
@@ -343,7 +384,9 @@ class SETMPIModel(object):
             if self.prune and not worker and (epoch % 20 == 0 and epoch > 200):
                 sum_incoming_weights = np.abs(self.w[i]).sum(axis=0)
                 t = np.percentile(sum_incoming_weights, 10)
-                sum_incoming_weights = np.where(sum_incoming_weights <= t, 0, sum_incoming_weights)
+                sum_incoming_weights = np.where(
+                    sum_incoming_weights <= t, 0, sum_incoming_weights
+                )
                 ids = np.argwhere(sum_incoming_weights == 0)
 
                 weights = self.w[i].tolil()
@@ -371,50 +414,73 @@ class SETMPIModel(object):
 
             largest_negative = values[int((1 - self.zeta) * first_zero_pos)]
             smallest_positive = values[
-                int(min(values.shape[0] - 1, last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos)))]
+                int(
+                    min(
+                        values.shape[0] - 1,
+                        last_zero_pos + self.zeta * (values.shape[0] - last_zero_pos),
+                    )
+                )
+            ]
 
             # remove the weights (W) closest to zero and modify PD as well
-            vals_w_new = vals_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
-            rows_w_new = rows_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
-            cols_w_new = cols_w[(vals_w > smallest_positive) | (vals_w < largest_negative)]
+            vals_w_new = vals_w[
+                (vals_w > smallest_positive) | (vals_w < largest_negative)
+            ]
+            rows_w_new = rows_w[
+                (vals_w > smallest_positive) | (vals_w < largest_negative)
+            ]
+            cols_w_new = cols_w[
+                (vals_w > smallest_positive) | (vals_w < largest_negative)
+            ]
 
             new_w_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
             old_pd_row_col_index = np.stack((rows_pd, cols_pd), axis=-1)
 
-            new_pd_row_col_index_flag = array_intersect(old_pd_row_col_index,
-                                                        new_w_row_col_index)  # careful about order
+            new_pd_row_col_index_flag = array_intersect(
+                old_pd_row_col_index, new_w_row_col_index
+            )  # careful about order
 
             vals_pd_new = vals_pd[new_pd_row_col_index_flag]
             rows_pd_new = rows_pd[new_pd_row_col_index_flag]
             cols_pd_new = cols_pd[new_pd_row_col_index_flag]
 
-            self.pdw[i] = coo_matrix((vals_pd_new, (rows_pd_new, cols_pd_new)),
-                                     (self.dimensions[i - 1], self.dimensions[i])).tocsr()
+            self.pdw[i] = coo_matrix(
+                (vals_pd_new, (rows_pd_new, cols_pd_new)),
+                (self.dimensions[i - 1], self.dimensions[i]),
+            ).tocsr()
 
             # add new random connections
             keep_connections = np.size(rows_w_new)
             length_random = vals_w.shape[0] - keep_connections
 
-            if self.weight_init == 'he_uniform':
-                limit = np.sqrt(6. / float(self.dimensions[i - 1]))
-            if self.weight_init == 'xavier':
-                limit = np.sqrt(6. / (float(self.dimensions[i - 1]) + float(self.dimensions[i])))
+            if self.weight_init == "he_uniform":
+                limit = np.sqrt(6.0 / float(self.dimensions[i - 1]))
+            if self.weight_init == "xavier":
+                limit = np.sqrt(
+                    6.0 / (float(self.dimensions[i - 1]) + float(self.dimensions[i]))
+                )
 
             random_vals = np.random.uniform(-limit, limit, length_random)
             zero_vals = 0 * random_vals  # explicit zeros
 
             # adding  (wdok[ik,jk]!=0): condition
             while length_random > 0:
-                ik = np.random.randint(0, self.dimensions[i - 1], size=length_random, dtype='int32')
-                jk = np.random.randint(0, self.dimensions[i], size=length_random, dtype='int32')
+                ik = np.random.randint(
+                    0, self.dimensions[i - 1], size=length_random, dtype="int32"
+                )
+                jk = np.random.randint(
+                    0, self.dimensions[i], size=length_random, dtype="int32"
+                )
 
                 random_w_row_col_index = np.stack((ik, jk), axis=-1)
-                random_w_row_col_index = np.unique(random_w_row_col_index,
-                                                   axis=0)  # removing duplicates in new rows&cols
+                random_w_row_col_index = np.unique(
+                    random_w_row_col_index, axis=0
+                )  # removing duplicates in new rows&cols
                 oldW_row_col_index = np.stack((rows_w_new, cols_w_new), axis=-1)
 
-                unique_flag = ~array_intersect(random_w_row_col_index,
-                                               oldW_row_col_index)  # careful about order & tilda
+                unique_flag = ~array_intersect(
+                    random_w_row_col_index, oldW_row_col_index
+                )  # careful about order & tilda
 
                 ik_new = random_w_row_col_index[unique_flag][:, 0]
                 jk_new = random_w_row_col_index[unique_flag][:, 1]
@@ -422,14 +488,18 @@ class SETMPIModel(object):
                 rows_w_new = np.append(rows_w_new, ik_new)
                 cols_w_new = np.append(cols_w_new, jk_new)
 
-                length_random = vals_w.shape[0] - np.size(rows_w_new)  # this will constantly reduce lengthRandom
+                length_random = vals_w.shape[0] - np.size(
+                    rows_w_new
+                )  # this will constantly reduce lengthRandom
 
             # adding all the values along with corresponding row and column indices - Added by Amar
             vals_w_new = np.append(vals_w_new, random_vals)
             if vals_w_new.shape[0] != rows_w_new.shape[0]:
                 print("not good")
-            self.w[i] = coo_matrix((vals_w_new, (rows_w_new, cols_w_new)),
-                                   (self.dimensions[i - 1], self.dimensions[i])).tocsr()
+            self.w[i] = coo_matrix(
+                (vals_w_new, (rows_w_new, cols_w_new)),
+                (self.dimensions[i - 1], self.dimensions[i]),
+            ).tocsr()
 
     def predict(self, x_test, y_test, batch_size=100):
         """
