@@ -46,10 +46,10 @@ if __name__ == "__main__":
         "metric": {"name": "accuracy_topk", "goal": "maximize"},
         "early_terminate": {"type": "hyperband", "min_iter": 50},
         "parameters": {
-            "dropout_rate": {
-                "distribution": "categorical",
-                "values": [0, 0.1, 0.2, 0.3],
-            },
+            # "dropout_rate": {
+            #     "distribution": "categorical",
+            #     "values": [0, 0.1, 0.2, 0.3],
+            # },
             "data": {
                 "distribution": "categorical",
                 "values": [
@@ -113,9 +113,7 @@ if __name__ == "__main__":
             # 'data':{
             #     'value': "synthetic"
             # },
-            # 'dropout_rate':{
-            #     'value': 0.3
-            # },
+            'dropout_rate':{'value': 0.3},
             "epochs": {"value": 1000},
             "epsilon": {"value": 20},
             "eval_epoch": {"value": args.eval_epoch},
