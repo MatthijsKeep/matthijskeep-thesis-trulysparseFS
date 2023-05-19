@@ -196,3 +196,5 @@ loss_usps_100epochs_batchupdateTrue_runs10_neuron_importance_importancepruningTr
 neurofs
 
 wast/
+
+scipy
