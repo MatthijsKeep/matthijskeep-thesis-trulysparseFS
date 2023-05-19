@@ -187,12 +187,16 @@ def cae_fs(config, output_classes, K, batch_size=132):
 
     x_train = np.reshape(x_train, (len(x_train), -1))
     x_test = np.reshape(x_test, (len(x_test), -1))
-    y_train = to_categorical(y_train)
-    y_test = to_categorical(y_test)
     print(x_train.shape, y_train.shape)
     print(x_test.shape, y_test.shape)
 
     output_dim = x_train.shape[1]
+
+    # convert to 1 hot if not already 
+    if len(y_train.shape) == 1 and output_classes > 1:
+        y_train = to_categorical(y_train, output_classes)
+        y_test = to_categorical(y_test, output_classes)
+        y_val = to_categorical(y_val, output_classes)
 
     def decoder(x):
         x = Dense(output_dim)(x)
@@ -210,7 +214,7 @@ def cae_fs(config, output_classes, K, batch_size=132):
     selector = ConcreteAutoencoderFeatureSelector(
         K=K,
         output_function=decoder,
-        num_epochs=100,
+        num_epochs=10,
         batch_size=batch_size,
         learning_rate=0.01,
     )
@@ -221,11 +225,23 @@ def cae_fs(config, output_classes, K, batch_size=132):
     top_k_indices = selector.get_support(indices=True)
 
     train_X_new = x_train[:, top_k_indices]
-    test_X_new = x_val[:, top_k_indices]
+    test_X_new = x_test[:, top_k_indices] # we dont use this since we alreayd used it as val
+    val_X_new = x_val[:, top_k_indices]
 
-    train_y = np.argmax(y_train, axis=1)
-    test_y = np.argmax(y_val, axis=1)
-    return train_X_new, train_y, test_X_new, test_y, top_k_indices
+    # convert back from 1 hot to labels
+
+    print(y_test)
+
+    y_train = np.argmax(y_train, axis=1)
+    y_test = np.argmax(y_test, axis=1)
+    y_val = np.argmax(y_val, axis=1)
+
+    print(y_test)
+
+
+    # train_y = np.argmax(y_train, axis=1)
+    # test_y = np.argmax(y_val, axis=1)
+    return train_X_new, y_train, val_X_new, y_val, top_k_indices
 
 
 def main(config):
@@ -289,18 +305,21 @@ def main(config):
         f"Shapes going into SVM: {train_X_new.shape}, {train_y.shape}, {test_X_new.shape}, {test_y.shape}"
     )
 
-    # if y is one-hot, convert to categorical
+    # train_y and test_y should be 1 dimensional
     if len(train_y.shape) > 1:
-        print(train_y[:3])
+        print(f"Train y before reshape: {train_y}")
         train_y = np.argmax(train_y, axis=1)
+        print(f"Train y after reshape: {train_y}")
 
     if len(test_y.shape) > 1:
-        print(test_y[:3])
+        print(f"Test y before reshape: {test_y}")
         test_y = np.argmax(test_y, axis=1)
+        print(f"Test y after reshape: {test_y}")
 
-    print(
-        f"Shapes going into SVM: {train_X_new.shape}, {train_y.shape}, {test_X_new.shape}, {test_y.shape}"
-    )
+    print(f"train_y going into svm: {train_y}")
+    print(f"test_y going into svm: {test_y}")
+
+
     svm_acc = svm_test(train_X_new, train_y, test_X_new, test_y)
 
     if config.data in [
