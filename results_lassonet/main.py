@@ -32,7 +32,7 @@ wandb.login(key="43d952ea50348fd7b9abbc1ab7d0b787571e8918", timeout=300)
 
 print(os.getcwd())
 
-from lassonet import LassoNetClassifierCV, plot_path
+from lassonet import LassoNetClassifier, plot_path
 
 from sklearn import svm
 
@@ -168,7 +168,7 @@ def lassonet_fs(data, K):
     # make labels from one-hot encoding to single integer
     train_y = np.argmax(train_y, axis=1)
     test_y = np.argmax(test_y, axis=1)
-    model = LassoNetClassifierCV(
+    model = LassoNetClassifier(
         M=10,
         hidden_dims=(1000,),
         verbose=0,
@@ -181,6 +181,7 @@ def lassonet_fs(data, K):
     print(model.get_params())
     top_k_indices = np.argsort(model.feature_importances_.numpy())[::-1][:K]
     # Get the top K features
+    print(top_k_indices)
     train_X_new = train_X[:, top_k_indices]
     test_X_new = test_X[:, top_k_indices]
 
