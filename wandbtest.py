@@ -440,6 +440,7 @@ class SET_MLP:
         self.input_pruning = input_pruning
         self.lamda = lamda
         self.config = config
+        self.use_neuron_importance = config.use_neuron_importance
         self.zero_init_limit = 1e-4
 
         if self.config.data in [
@@ -497,6 +498,12 @@ class SET_MLP:
         # Added by Matthijs
         self.layer_importances = {}  # NOTE (Matthijs): Like this or as a list?
         self._init_layer_importances()
+
+        # create array with length input layer size, with 0's
+        self.features_times_pruned = np.zeros(
+            dimensions[0], dtype="float32"
+        )
+        print(f"shape of features_times_pruned: {self.features_times_pruned.shape}")
 
     def _init_layer_importances(self):
         """
@@ -691,8 +698,6 @@ class SET_MLP:
                 which is {zerow_pct}% of the total neurons."
         )
         # print the amount of neurons that have 0 incoming weights, which are important features (e.g., in the first K neurons in the synthetic data)
-        if self.config.data == "synthetic":
-            self._check_incorrectly_pruned()
         start_input_pruning = datetime.datetime.now()
 
         curr_percentage = (epoch / self.config.epochs) / 100
@@ -706,15 +711,73 @@ class SET_MLP:
         print(
             f"\n NOTE: {curr_percentage}, which prunes the {curr_percentage}th percentile of the weights, which are all weights smaller than {val}"
         )
+        # get all the indices of neurons that are going to get pruned
+        ids_prune_check = np.argwhere(sum_incoming_weights <= val)
+        # check how many of those overlap with the first K neurons
+        
+
+
+        # for every neuron in ids_prune_check, add 1 to its value in self.features_times_pruned
+        for neuron in ids_prune_check[:, 0]:
+            # print(neuron)
+            self.features_times_pruned[neuron] += 1
+        print(f"self.features_times_pruned {self.features_times_pruned}")
+
+        print(ids_prune_check.shape)
+
+        if self.config.plotting and self.config.data == 'mnist':
+            # create a plot of the pixels in self.features_times_pruned
+            # reshape the array to 28x28
+
+            pixels = self.features_times_pruned.copy().reshape(28, 28, 1)
+            # print(pixels)
+            print(pixels.shape)
+            # create a heatmap of the pixels, that we can save to wandb (has to be plt.plot, save it to variable plt_times_pruned)
+            plt.imshow(pixels, cmap='viridis', interpolation='nearest')
+            plt.title(f"Pruned pixels in epoch {epoch}")
+            plt.colorbar()
+
+            self.plt_times_pruned = wandb.Image(plt)
+
+            # wandb.log({"pruned_pixels_heatmap": plt_times_pruned})
+            plt.clf()
+            plt.cla()
+            plt.close()
+
+        elif self.config.plotting and self.config.data == 'coil':
+            pixels = self.features_times_pruned.copy().reshape(32, 32, 1)
+            # print(pixels)
+            print(pixels.shape)
+            # create a heatmap of the pixels, that we can save to wandb (has to be plt.plot, save it to variable plt_times_pruned)
+            plt.imshow(pixels, cmap='viridis', interpolation='nearest')
+            plt.title(f"Pruned pixels in epoch {epoch}")
+            plt.colorbar()
+
+            self.plt_times_pruned = wandb.Image(plt)
+
+            # wandb.log({"pruned_pixels_heatmap": plt_times_pruned})
+            plt.clf()
+            plt.cla()
+            plt.close()
+
+
+        if self.config.data in ["synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5"]:
+            overlap = np.intersect1d(ids_prune_check, np.arange(self.config.K)).shape[0]
+            print(
+            f"Overlap between neurons that are going to get pruned and the first K neurons: {overlap} in epoch {epoch}"
+            )
+            self.amount_incorrectly_pruned += overlap
+            print(f"Total amount of incorrectly pruned neurons: {self.amount_incorrectly_pruned}")
+
 
         sum_incoming_weights = np.where(
             sum_incoming_weights <= val, 0, sum_incoming_weights
         )
         ids = np.argwhere(sum_incoming_weights == 0)
-        # if self.config.plotting and (self.config.data == 'MNIST' | self.config.data == 'FashionMnist'):
-        #     self._plot_pruned_pixels(ids, epoch)
         weights = self.w[i].tolil()
         pdw = self.pdw[i].tolil()
+
+
 
         weights[ids[:, 0], :] = 0
         pdw[ids[:, 0], :] = 0
@@ -725,18 +788,6 @@ class SET_MLP:
         print(
             f"Input pruning took {datetime.datetime.now() - start_input_pruning} seconds"
         )
-
-    def _plot_pruned_pixels(self, ids, epoch):
-        matrix2828 = np.ones((28, 28))
-        matrix2828 = matrix2828.flatten()
-        matrix2828[ids] = 0
-        matrix2828 = matrix2828.reshape((28, 28))
-        # plot the matrix with the epoch number as title without interruping the training
-        plt.imshow(matrix2828, cmap="gray")
-        plt.title(f"Epoch {epoch}")
-        # save into the pruning directory
-        plt.savefig(f"pruning/{epoch}.png")
-        plt.close()
 
     def _check_incorrectly_pruned(self):
         print(
@@ -858,6 +909,9 @@ class SET_MLP:
         max_accuracy_topk = 0
         maximum_accuracy = 0
         early_stopping_counter = 0
+
+        features_plot = None
+        self.plt_times_pruned = None
 
         for i in range(epochs):
             # Shuffle the data
@@ -1005,7 +1059,7 @@ class SET_MLP:
                     print(
                         f"Time to evaluate the selected features during epoch {i}: {fs_time}"
                     )
-                    if config.data == "synthetic":
+                    if config.data in ["synthetic", "synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5"]:
                         print(
                             f"Out of the top {config.K} features, {pct_correct} are correct"
                         )
@@ -1018,17 +1072,31 @@ class SET_MLP:
                         if config.data in ["mnist", "FashionMnist"]:
                             # print(self.input_sum.reshape(28, 28, 1))
                             image_array = self.input_sum.reshape(28, 28, 1)
-                            # scale to 0-255
-                            image_array = (
-                                255
-                                * (image_array - np.min(image_array))
-                                / (np.max(image_array) - np.min(image_array))
-                            )
-                            features_plot = wandb.Image(
-                                image_array, caption="Input features"
-                            )
-                    else:
+                            # scale to 0-255 ? 
+                            # image_array = (
+                            #     255
+                            #     * (image_array - np.min(image_array))
+                            #     / (np.max(image_array) - np.min(image_array))
+                            # )
+                            # print(image_array)
+                            # image_array = np.uint8(image_array)
+                            # plot the image array as a heatmap with virids colormap
+                            
+                            plt.imshow(image_array, cmap="viridis")
+                            plt.colorbar()
+                            plt.title(f"Weights of input neurons in epoch {str(i)}")
+                            plt_features = wandb.Image(plt)
+                        elif config.data == 'coil': 
+                            image_array = self.input_sum.reshape(32, 32, 1)
+                            plt.imshow(image_array, cmap="viridis")
+                            plt.colorbar()
+                            plt.title(f"Weights of input neurons in epoch {str(i)}")
+                            plt_features = wandb.Image(plt)
+                            
+                    elif config.plotting == False:
                         features_plot = None
+                    if config.input_pruning == False:
+                        self.plt_times_pruned = None
 
                     wb_metrics = {
                         "loss_train": loss_train,
@@ -1039,12 +1107,19 @@ class SET_MLP:
                         "accuracy_topk": accuracy_topk,
                         "pct_correct": pct_correct,
                         "amount_incorrectly_pruned": self.amount_incorrectly_pruned,
-                        "features": features_plot,
+                        "features": plt_features,
+                        "pruned_pixels": self.plt_times_pruned,
                     }
                     wandb.log(wb_metrics)
                     if accuracy_topk > max_accuracy_topk:
                         max_accuracy_topk = accuracy_topk
                         early_stopping_counter = 0
+
+                    # if the plot is not None, reset and clear it
+                    if plt is not None:
+                        plt.clf()
+                        plt.cla()
+                        plt.close()
 
                 # If the loss_test does not improve for 25 epochs, stop the training
                 if loss_test < min_loss:
@@ -1082,13 +1157,13 @@ class SET_MLP:
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
-            # # save performance metrics values in a file
-            # if self.save_filename != "":
-            #     np.savetxt(self.save_filename +".txt", metrics)
+                # # save performance metrics values in a file
+                # if self.save_filename != "":
+                #     np.savetxt(self.save_filename +".txt", metrics)
 
-            # if self.save_filename != "" and self.monitor:
-            #     with open(self.save_filename + "_monitor.json", 'w') as file:
-            #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
+                # if self.save_filename != "" and self.monitor:
+                #     with open(self.save_filename + "_monitor.json", 'w') as file:
+                #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
 
         # Save the metrics to a file
@@ -1283,7 +1358,7 @@ class SET_MLP:
 
             # adding  (wdok[ik,jk]!=0): condition
             while length_random > 0:
-                if self.weight_init in ["neuron_importance", "zeros", "normal", "xavier"]:
+                if self.use_neuron_importance:
                     neuron_importance_i = self.layer_importances[i]
                     neuron_importance_j = self.layer_importances[i + 1]
                     neuron_importance_i = neuron_importance_i / np.sum(
