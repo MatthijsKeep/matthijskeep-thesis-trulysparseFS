@@ -100,7 +100,7 @@ if __name__ == "__main__":
             #     "distribution": "categorical",
             #     "values": ["zeros", "normal", "he_uniform", "xavier"],
             # },
-            "use_neuron_importance":{
+            "use_neuron_importance": {
                 "distribution": "categorical",
                 "values": [True, False],
             }

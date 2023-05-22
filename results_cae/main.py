@@ -192,7 +192,7 @@ def cae_fs(config, output_classes, K, batch_size=132):
 
     output_dim = x_train.shape[1]
 
-    # convert to 1 hot if not already 
+    # convert to 1 hot if not already
     if len(y_train.shape) == 1 and output_classes > 1:
         y_train = to_categorical(y_train, output_classes)
         y_test = to_categorical(y_test, output_classes)
@@ -225,7 +225,9 @@ def cae_fs(config, output_classes, K, batch_size=132):
     top_k_indices = selector.get_support(indices=True)
 
     train_X_new = x_train[:, top_k_indices]
-    test_X_new = x_test[:, top_k_indices] # we dont use this since we alreayd used it as val
+    test_X_new = x_test[
+        :, top_k_indices
+    ]  # we dont use this since we alreayd used it as val
     val_X_new = x_val[:, top_k_indices]
 
     # convert back from 1 hot to labels
@@ -237,7 +239,6 @@ def cae_fs(config, output_classes, K, batch_size=132):
     y_val = np.argmax(y_val, axis=1)
 
     print(y_test)
-
 
     # train_y = np.argmax(y_train, axis=1)
     # test_y = np.argmax(y_val, axis=1)
@@ -318,7 +319,6 @@ def main(config):
 
     print(f"train_y going into svm: {train_y}")
     print(f"test_y going into svm: {test_y}")
-
 
     svm_acc = svm_test(train_X_new, train_y, test_X_new, test_y)
 

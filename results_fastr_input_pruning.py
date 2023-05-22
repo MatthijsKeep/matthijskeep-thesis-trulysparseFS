@@ -72,10 +72,7 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [5, 10, 50]
             # },
-            'input_pruning':{
-                'distribution': 'categorical',
-                'values': [True, False]
-            },
+            "input_pruning": {"distribution": "categorical", "values": [True, False]},
             # 'importance_pruning':{
             #     'distribution': 'categorical',
             #     'values': [True, False]

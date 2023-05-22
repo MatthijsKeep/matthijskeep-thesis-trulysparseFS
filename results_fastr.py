@@ -113,7 +113,7 @@ if __name__ == "__main__":
             # 'data':{
             #     'value': "synthetic"
             # },
-            'dropout_rate':{'value': 0.3},
+            "dropout_rate": {"value": 0.3},
             "epochs": {"value": 1000},
             "epsilon": {"value": 20},
             "eval_epoch": {"value": args.eval_epoch},

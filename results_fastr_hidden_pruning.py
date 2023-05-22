@@ -76,9 +76,9 @@ if __name__ == "__main__":
             #     'distribution': 'categorical',
             #     'values': [True, False]
             # },
-            'importance_pruning':{
-                'distribution': 'categorical',
-                'values': [True, False]
+            "importance_pruning": {
+                "distribution": "categorical",
+                "values": [True, False],
             }
             # 'learning_rate':{
             #     'distribution': 'categorical',

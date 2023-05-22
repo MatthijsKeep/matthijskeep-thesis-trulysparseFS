@@ -500,9 +500,7 @@ class SET_MLP:
         self._init_layer_importances()
 
         # create array with length input layer size, with 0's
-        self.features_times_pruned = np.zeros(
-            dimensions[0], dtype="float32"
-        )
+        self.features_times_pruned = np.zeros(dimensions[0], dtype="float32")
         print(f"shape of features_times_pruned: {self.features_times_pruned.shape}")
 
     def _init_layer_importances(self):
@@ -714,8 +712,6 @@ class SET_MLP:
         # get all the indices of neurons that are going to get pruned
         ids_prune_check = np.argwhere(sum_incoming_weights <= val)
         # check how many of those overlap with the first K neurons
-        
-
 
         # for every neuron in ids_prune_check, add 1 to its value in self.features_times_pruned
         for neuron in ids_prune_check[:, 0]:
@@ -725,7 +721,7 @@ class SET_MLP:
 
         print(ids_prune_check.shape)
 
-        if self.config.plotting and self.config.data == 'mnist':
+        if self.config.plotting and self.config.data == "mnist":
             # create a plot of the pixels in self.features_times_pruned
             # reshape the array to 28x28
 
@@ -733,7 +729,7 @@ class SET_MLP:
             # print(pixels)
             print(pixels.shape)
             # create a heatmap of the pixels, that we can save to wandb (has to be plt.plot, save it to variable plt_times_pruned)
-            plt.imshow(pixels, cmap='viridis', interpolation='nearest')
+            plt.imshow(pixels, cmap="viridis", interpolation="nearest")
             plt.title(f"Pruned pixels in epoch {epoch}")
             plt.colorbar()
 
@@ -744,12 +740,12 @@ class SET_MLP:
             plt.cla()
             plt.close()
 
-        elif self.config.plotting and self.config.data == 'coil':
+        elif self.config.plotting and self.config.data == "coil":
             pixels = self.features_times_pruned.copy().reshape(32, 32, 1)
             # print(pixels)
             print(pixels.shape)
             # create a heatmap of the pixels, that we can save to wandb (has to be plt.plot, save it to variable plt_times_pruned)
-            plt.imshow(pixels, cmap='viridis', interpolation='nearest')
+            plt.imshow(pixels, cmap="viridis", interpolation="nearest")
             plt.title(f"Pruned pixels in epoch {epoch}")
             plt.colorbar()
 
@@ -760,15 +756,21 @@ class SET_MLP:
             plt.cla()
             plt.close()
 
-
-        if self.config.data in ["synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5"]:
+        if self.config.data in [
+            "synthetic1",
+            "synthetic2",
+            "synthetic3",
+            "synthetic4",
+            "synthetic5",
+        ]:
             overlap = np.intersect1d(ids_prune_check, np.arange(self.config.K)).shape[0]
             print(
-            f"Overlap between neurons that are going to get pruned and the first K neurons: {overlap} in epoch {epoch}"
+                f"Overlap between neurons that are going to get pruned and the first K neurons: {overlap} in epoch {epoch}"
             )
             self.amount_incorrectly_pruned += overlap
-            print(f"Total amount of incorrectly pruned neurons: {self.amount_incorrectly_pruned}")
-
+            print(
+                f"Total amount of incorrectly pruned neurons: {self.amount_incorrectly_pruned}"
+            )
 
         sum_incoming_weights = np.where(
             sum_incoming_weights <= val, 0, sum_incoming_weights
@@ -776,8 +778,6 @@ class SET_MLP:
         ids = np.argwhere(sum_incoming_weights == 0)
         weights = self.w[i].tolil()
         pdw = self.pdw[i].tolil()
-
-
 
         weights[ids[:, 0], :] = 0
         pdw[ids[:, 0], :] = 0
@@ -1059,7 +1059,14 @@ class SET_MLP:
                     print(
                         f"Time to evaluate the selected features during epoch {i}: {fs_time}"
                     )
-                    if config.data in ["synthetic", "synthetic1", "synthetic2", "synthetic3", "synthetic4", "synthetic5"]:
+                    if config.data in [
+                        "synthetic",
+                        "synthetic1",
+                        "synthetic2",
+                        "synthetic3",
+                        "synthetic4",
+                        "synthetic5",
+                    ]:
                         print(
                             f"Out of the top {config.K} features, {pct_correct} are correct"
                         )
@@ -1072,7 +1079,7 @@ class SET_MLP:
                         if config.data in ["mnist", "FashionMnist"]:
                             # print(self.input_sum.reshape(28, 28, 1))
                             image_array = self.input_sum.reshape(28, 28, 1)
-                            # scale to 0-255 ? 
+                            # scale to 0-255 ?
                             # image_array = (
                             #     255
                             #     * (image_array - np.min(image_array))
@@ -1081,18 +1088,18 @@ class SET_MLP:
                             # print(image_array)
                             # image_array = np.uint8(image_array)
                             # plot the image array as a heatmap with virids colormap
-                            
+
                             plt.imshow(image_array, cmap="viridis")
                             plt.colorbar()
                             plt.title(f"Weights of input neurons in epoch {str(i)}")
                             plt_features = wandb.Image(plt)
-                        elif config.data == 'coil': 
+                        elif config.data == "coil":
                             image_array = self.input_sum.reshape(32, 32, 1)
                             plt.imshow(image_array, cmap="viridis")
                             plt.colorbar()
                             plt.title(f"Weights of input neurons in epoch {str(i)}")
                             plt_features = wandb.Image(plt)
-                            
+
                     elif config.plotting == False:
                         features_plot = None
                     if config.input_pruning == False:
@@ -1157,13 +1164,13 @@ class SET_MLP:
             t6 = datetime.datetime.now()
             print("Weights evolution time ", t6 - t5)
 
-                # # save performance metrics values in a file
-                # if self.save_filename != "":
-                #     np.savetxt(self.save_filename +".txt", metrics)
+            # # save performance metrics values in a file
+            # if self.save_filename != "":
+            #     np.savetxt(self.save_filename +".txt", metrics)
 
-                # if self.save_filename != "" and self.monitor:
-                #     with open(self.save_filename + "_monitor.json", 'w') as file:
-                #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
+            # if self.save_filename != "" and self.monitor:
+            #     with open(self.save_filename + "_monitor.json", 'w') as file:
+            #         file.write(json.dumps(self.monitor.get_stats(), indent=4, sort_keys=True, default=str))
         # print(self.get_core_input_connections())
 
         # Save the metrics to a file
