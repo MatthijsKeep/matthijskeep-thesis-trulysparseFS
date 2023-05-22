@@ -9,26 +9,10 @@ Code repository belonging to Master Thesis at Technical University of Eindhoven,
 
 # Abstract
 
-Recently, a novel category of embedded feature selection algorithms, leveraging the representational power of neural networks, has been developed. Despite its efficacy in certain contexts, its computational efficiency is not sufficient to make it a practical solution. We propose a supervised approach to selecting features for the training of neural networks, which leverages the representational capability of a neural network within the framework of sparse neural networks for improved efficiency. Our approach demonstrates the potential to achieve both accuracy and efficiency; it achieved +3% classification accuracy over other supervised methods while using only a tenth of the epochs. Initial experiments conducted across three datasets (Madelon, MNIST and FashionMNIST) showed that our feature selection method performs well and is viable for further development.
+This paper offers an in-depth evaluation of the newly introduced Feature Selection using A Sparse Training Regime (FASTR) method, benchmarking it against other established methods on synthetic and real-world data. The research questions at the heart of this study focus on FASTR's performance in a supervised environment, its advancements over the binary masking implementation, and the factors that influence the feature selection performance of a sparse Multilayer Perceptron (MLP). Through a series of rigorous experiments, FASTR demonstrated consistent performance across multiple synthetic datasets, suggesting its potential as a reliable feature selection method. This robustness was further substantiated in a second experiment, where FASTR showed strong performance across various real-world datasets. Subsequent experiments delved deeper into the factors influencing the feature selection performance of a sparse MLP. The results indicated that initializing weights close to zero was most effective, while the impact of pruning on the hidden layer remained inconclusive. Not having input pruning showed a slight advantage, and using the neuron importance metric showed a slight but non-significant advantage. In conclusion, this study provides valuable insights into the feature selection performance of sparse MLPs, demonstrating the potential of FASTR as a robust and reliable feature selection method. The findings also shed light on the factors influencing the performance of a sparse MLP, contributing to the broader understanding of feature selection using truly sparse neural networks.
 
 # Usage
-
-The code can be run using the following command in the terminal
-
-```shell
-python set_mlp_sequential.py
-```
-
-Please refer to the argparser for possible arguments. The following arguments are used in the final paper:
-
-<details><summary>Chosen arguments</summary>
-
-```shell
-python set_mlp_sequential.py epochs=250, runs=10, batch_size=256, lr=0.001, momentum=0.9, epsilon=20, nhidden=200, K=20, lamda=0.9, zeta=0.3, dropout_rate=0.3, weight_decay=0.0002, allrelu_slope=0.6, eval_epoch=5, data='madelon', update_batch=True, input_pruning=True, importance_pruning=True, plotting=False)
-```
-
-</details>
-
+TBD
 
 # Results
 ##  Loss plots for different methods
