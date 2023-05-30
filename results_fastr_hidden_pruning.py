@@ -149,12 +149,12 @@ if __name__ == "__main__":
     # done to here
 
     def run_exp(config=None):
-        print("step 1")
+        # print("step 1")
         sum_training_time = 0
         with wandb.init(config=config):
             config = wandb.config
             print(config)
-            print("step 2")
+            # print("step 2")
             if config.data == "synthetic":
                 data_config = {
                     "n_features": config.n_features,
@@ -171,7 +171,7 @@ if __name__ == "__main__":
             else:
                 x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
 
-            print("step 3")
+            # print("step 3")
             if config.flex_batch_size:
                 print(
                     f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}."
@@ -189,7 +189,7 @@ if __name__ == "__main__":
                 )
                 batch_size = 32
             np.random.seed(42)
-            print("step 4")
+            # print("step 4")
             network = SET_MLP(
                 (x_train.shape[1], config.nhidden, y_train.shape[1]),
                 (AlternatedLeftReLU(-config.allrelu_slope), Softmax),
@@ -205,7 +205,7 @@ if __name__ == "__main__":
             )
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
-            print("step 5")
+            # print("step 5")
             network.fit(
                 x_train,
                 y_train,
@@ -258,9 +258,9 @@ if __name__ == "__main__":
             print("\nTotal evolution time: ", network.evolution_time)
             sum_training_time += step_time
 
-    print("before sweep id")
+    # print("before sweep id")
     sweep_id = wandb.sweep(sweep=sweep_config, project="results-fastr-hidden-pruning")
-    print("before calling agent")
+    # print("before calling agent")
     wandb.agent(sweep_id, function=run_exp)
 
     wandb.finish()

@@ -167,7 +167,6 @@ if __name__ == "__main__":
             else:
                 x_train, y_train, x_test, y_test, x_val, y_val = get_data(config.data)
 
-            print("step 3")
             if config.flex_batch_size:
                 print(
                     f"The batch size is flexible since flex_batch_size is {config.flex_batch_size}."
@@ -201,7 +200,7 @@ if __name__ == "__main__":
             )
             metrics = np.zeros((config.runs, config.epochs, 4))
             start_time = time.time()
-            print("step 5")
+            
             network.fit(
                 x_train,
                 y_train,
